@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useCursor } from '@react-three/drei'
-import { Artifact } from './Artifact'
+import { Artifact, useWeaponModel } from './Artifact'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
   ARTIFACT_SEEDS,
@@ -49,16 +49,12 @@ function ChosenBlade() {
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === CHOSEN_SEED.id)
   useCursor(hovered)
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null)
+  const { model, glowMaterials } = useWeaponModel(CHOSEN_SEED.id)
 
   useFrame((_, delta) => {
-    if (!materialRef.current) return
-    materialRef.current.emissiveIntensity = THREE.MathUtils.damp(
-      materialRef.current.emissiveIntensity,
-      hovered ? 1.4 : 0.15,
-      6,
-      delta,
-    )
+    for (const m of glowMaterials) {
+      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, hovered ? 1.6 : 0.1, 6, delta)
+    }
   })
 
   return (
@@ -75,21 +71,7 @@ function ChosenBlade() {
       }}
       onPointerOut={() => setHovered(null)}
     >
-      <mesh position-y={1.4} castShadow>
-        <boxGeometry args={[0.24, 3, 0.55]} />
-        <meshStandardMaterial
-          ref={materialRef}
-          color="#1f1d1b"
-          roughness={0.55}
-          metalness={0.8}
-          emissive={CHOSEN_SEED.color}
-          emissiveIntensity={0.15}
-        />
-      </mesh>
-      <mesh position-y={2.6} castShadow>
-        <boxGeometry args={[0.9, 0.18, 0.22]} />
-        <meshStandardMaterial color="#2a241e" roughness={0.7} metalness={0.6} />
-      </mesh>
+      <primitive object={model} position-y={1.1} />
     </group>
   )
 }

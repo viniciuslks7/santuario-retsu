@@ -1,20 +1,32 @@
-import { useRef } from 'react'
-import type { ReactElement } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { Float, useCursor } from '@react-three/drei'
-import type { ArtifactSeed, ArtifactShape } from '../../lib/artifacts'
+import { Float, useCursor, useGLTF } from '@react-three/drei'
+import type { ArtifactSeed } from '../../lib/artifacts'
+import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
 import { useShrineStore } from '../../store/useShrineStore'
 
-/** Geometria placeholder por tipo de arma — substituível por GLTF depois. */
-const SHAPE_GEOMETRY: Record<ArtifactShape, ReactElement> = {
-  nodachi: <boxGeometry args={[0.16, 2.6, 0.42]} />,
-  katana: <boxGeometry args={[0.12, 2.2, 0.32]} />,
-  greatblade: <boxGeometry args={[0.32, 2.9, 0.9]} />,
-  spindle: <octahedronGeometry args={[0.7, 0]} />,
-  urn: <cylinderGeometry args={[0.34, 0.5, 0.95, 14]} />,
-  club: <cylinderGeometry args={[0.3, 0.16, 2.2, 8]} />,
-  sickle: <torusGeometry args={[0.55, 0.13, 8, 18]} />,
+/** Carrega o GLB da arma e clona materiais por instância.
+ *  Materiais chamados "glow" (definidos em tools/build-models.mjs) já trazem
+ *  a cor emissiva do irmão; aqui só animamos a intensidade. */
+export function useWeaponModel(id: string) {
+  const { scene } = useGLTF(`/models/${id}.glb`)
+  return useMemo(() => {
+    const model = scene.clone(true)
+    const glowMaterials: THREE.MeshStandardMaterial[] = []
+    model.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return
+      obj.castShadow = true
+      const cloned = (obj.material as THREE.MeshStandardMaterial).clone()
+      obj.material = cloned
+      if (cloned.name === 'glow') glowMaterials.push(cloned)
+    })
+    return { model, glowMaterials }
+  }, [scene])
+}
+
+for (const seed of [...ARTIFACT_SEEDS, CHOSEN_SEED]) {
+  useGLTF.preload(`/models/${seed.id}.glb`)
 }
 
 interface ArtifactProps {
@@ -22,7 +34,7 @@ interface ArtifactProps {
   position: [number, number, number]
 }
 
-/** Pedestal de pedra + arma placeholder flutuando. Hover acende o brilho
+/** Pedestal de pedra + arma GLB flutuando. Hover intensifica o brilho
  *  emissivo e amplia a arma; clique dispara a inspeção (CameraRig + overlay). */
 export function Artifact({ seed, position }: ArtifactProps) {
   const select = useShrineStore((s) => s.select)
@@ -30,17 +42,12 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const hovered = useShrineStore((s) => s.hoveredSibling === seed.id)
   useCursor(hovered)
 
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null)
-  const weaponRef = useRef<THREE.Mesh>(null)
+  const { model, glowMaterials } = useWeaponModel(seed.id)
+  const weaponRef = useRef<THREE.Group>(null)
 
   useFrame((_, delta) => {
-    if (materialRef.current) {
-      materialRef.current.emissiveIntensity = THREE.MathUtils.damp(
-        materialRef.current.emissiveIntensity,
-        hovered ? 2.4 : 0.9,
-        6,
-        delta,
-      )
+    for (const m of glowMaterials) {
+      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, hovered ? 3.2 : 1.2, 6, delta)
     }
     if (weaponRef.current) {
       const s = THREE.MathUtils.damp(weaponRef.current.scale.x, hovered ? 1.14 : 1, 6, delta)
@@ -71,17 +78,7 @@ export function Artifact({ seed, position }: ArtifactProps) {
       </mesh>
 
       <Float speed={2.2} rotationIntensity={0.45} floatIntensity={0.7} floatingRange={[0, 0.35]}>
-        <mesh ref={weaponRef} position-y={3} castShadow>
-          {SHAPE_GEOMETRY[seed.shape]}
-          <meshStandardMaterial
-            ref={materialRef}
-            color="#3a332c"
-            roughness={0.35}
-            metalness={0.7}
-            emissive={seed.color}
-            emissiveIntensity={0.9}
-          />
-        </mesh>
+        <primitive ref={weaponRef} object={model} position-y={3.2} />
       </Float>
 
       {/* Luz pontual fraca pra arma "banhar" o pedestal com sua cor */}

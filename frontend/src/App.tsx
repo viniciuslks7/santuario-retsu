@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Experience } from './components/scene/Experience'
 import { useShrineStore } from './store/useShrineStore'
@@ -11,7 +12,9 @@ function App() {
         dpr={[1, 2]}
         onPointerMissed={() => useShrineStore.getState().clearSelection()}
       >
-        <Experience />
+        <Suspense fallback={null}>
+          <Experience />
+        </Suspense>
       </Canvas>
     </div>
   )

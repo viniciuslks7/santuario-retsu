@@ -3,39 +3,28 @@
 
 import { duneHeight } from './dunes'
 
-export type ArtifactShape =
-  | 'nodachi'
-  | 'katana'
-  | 'greatblade'
-  | 'spindle'
-  | 'urn'
-  | 'club'
-  | 'sickle'
-
 export interface ArtifactSeed {
   id: string
   order: number
   color: string
-  shape: ArtifactShape
 }
 
 export const ARTIFACT_SEEDS: ArtifactSeed[] = [
-  { id: 'haruki', order: 1, color: '#7cb342', shape: 'nodachi' },
-  { id: 'setsuna', order: 2, color: '#90caf9', shape: 'katana' },
-  { id: 'lara', order: 3, color: '#d32f2f', shape: 'katana' },
-  { id: 'iwao', order: 4, color: '#8d6e63', shape: 'greatblade' },
-  { id: 'tsumugi', order: 5, color: '#ce93d8', shape: 'spindle' },
-  { id: 'raizo', order: 6, color: '#fdd835', shape: 'katana' },
-  { id: 'mizuki', order: 7, color: '#4dd0e1', shape: 'urn' },
-  { id: 'ranmaru', order: 8, color: '#ff7043', shape: 'club' },
-  { id: 'kyoya', order: 9, color: '#ab47bc', shape: 'sickle' },
+  { id: 'haruki', order: 1, color: '#7cb342' },
+  { id: 'setsuna', order: 2, color: '#90caf9' },
+  { id: 'lara', order: 3, color: '#d32f2f' },
+  { id: 'iwao', order: 4, color: '#8d6e63' },
+  { id: 'tsumugi', order: 5, color: '#ce93d8' },
+  { id: 'raizo', order: 6, color: '#fdd835' },
+  { id: 'mizuki', order: 7, color: '#4dd0e1' },
+  { id: 'ranmaru', order: 8, color: '#ff7043' },
+  { id: 'kyoya', order: 9, color: '#ab47bc' },
 ]
 
 export const CHOSEN_SEED: ArtifactSeed = {
   id: 'chosen',
   order: 10,
   color: '#e0e0e0',
-  shape: 'greatblade',
 }
 
 /** Raio do círculo de pedestais ao redor do monólito central. */
