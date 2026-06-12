@@ -23,6 +23,19 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
+## Ferramentas
+
+```bash
+# Regenera os GLB procedurais das armas (frontend/public/models/)
+cd frontend && node tools/build-models.mjs
+
+# Screenshot headless + estado da cena (precisa do dev server de pé)
+cd frontend && node scripts/shot.mjs "http://localhost:5173/?focus=lara" out.png 6000
+```
+
+Deep-link: `?focus=<id>` abre direto no close de um artefato (ids: haruki, setsuna,
+lara, iwao, tsumugi, raizo, mizuki, ranmaru, kyoya — e o segredo, chosen).
+
 ## Estrutura
 
 ```

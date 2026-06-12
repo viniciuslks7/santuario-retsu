@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { Float, useCursor, useGLTF } from '@react-three/drei'
+import { Float, Html, useCursor, useGLTF } from '@react-three/drei'
 import type { ArtifactSeed } from '../../lib/artifacts'
 import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
 import { useShrineStore } from '../../store/useShrineStore'
@@ -40,6 +40,7 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const select = useShrineStore((s) => s.select)
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === seed.id)
+  const summary = useShrineStore((s) => s.siblingIndex[seed.id])
   useCursor(hovered)
 
   const { model, glowMaterials } = useWeaponModel(seed.id)
@@ -83,6 +84,21 @@ export function Artifact({ seed, position }: ArtifactProps) {
 
       {/* Luz pontual fraca pra arma "banhar" o pedestal com sua cor */}
       <pointLight position-y={3} color={seed.color} intensity={2.5} distance={5} decay={2} />
+
+      {/* Nameplate de hover (dados do índice da API) */}
+      {hovered && summary && (
+        <Html center position-y={5.1} className="pointer-events-none select-none">
+          <div
+            className="border bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm"
+            style={{ borderColor: seed.color }}
+          >
+            <p className="text-[10px] tracking-[0.35em] text-stone-400 uppercase">
+              {summary.epithet}
+            </p>
+            <p className="font-display text-sm text-stone-100">{summary.name}</p>
+          </div>
+        </Html>
+      )}
     </group>
   )
 }

@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { useCursor } from '@react-three/drei'
+import { Html, useCursor } from '@react-three/drei'
 import { Artifact, useWeaponModel } from './Artifact'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
@@ -72,6 +72,17 @@ function ChosenBlade() {
       onPointerOut={() => setHovered(null)}
     >
       <primitive object={model} position-y={1.1} />
+
+      {hovered && (
+        <Html center position-y={3.4} className="pointer-events-none select-none">
+          <div className="border border-stone-400/60 bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm">
+            <p className="text-[10px] tracking-[0.35em] text-stone-400 uppercase">
+              sem registro na biblioteca
+            </p>
+            <p className="font-display text-sm text-stone-100">???</p>
+          </div>
+        </Html>
+      )}
     </group>
   )
 }

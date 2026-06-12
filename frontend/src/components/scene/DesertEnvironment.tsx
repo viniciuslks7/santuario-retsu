@@ -7,6 +7,8 @@ import { useShrineStore } from '../../store/useShrineStore'
 /** Posição do sol baixo no horizonte — compartilhada entre Sky, luz e o disco solar. */
 export const SUN_DIRECTION = new THREE.Vector3(-0.55, 0.08, -0.82).normalize()
 
+const sunDiscColor = new THREE.Color(3.2, 2.2, 1.2)
+
 function useDuneGeometry() {
   return useMemo(() => {
     const geo = new THREE.PlaneGeometry(320, 320, 140, 140)
@@ -37,10 +39,10 @@ export function DesertEnvironment() {
         mieDirectionalG={0.97}
       />
 
-      {/* Disco solar visível no horizonte — alvo do Bloom no Passo 5 */}
+      {/* Disco solar no horizonte — cor HDR acima de 1 pra estourar no Bloom */}
       <mesh position={SUN_DIRECTION.clone().multiplyScalar(220).setY(14).toArray()}>
         <sphereGeometry args={[12, 24, 24]} />
-        <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
+        <meshBasicMaterial color={sunDiscColor} toneMapped={false} />
       </mesh>
 
       {/* Sol poente: luz quente, rasante, com sombras longas */}

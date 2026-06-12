@@ -1,4 +1,5 @@
 import { OrbitControls } from '@react-three/drei'
+import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
 import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
@@ -23,6 +24,13 @@ export function Experience() {
         maxPolarAngle={Math.PI / 2 - 0.06}
         enablePan={false}
       />
+
+      {/* Cinematografia: brilho nas armas/sol, grão de filme e vinheta */}
+      <EffectComposer>
+        <Bloom mipmapBlur intensity={0.85} luminanceThreshold={1} luminanceSmoothing={0.25} />
+        <Noise opacity={0.04} />
+        <Vignette eskil={false} offset={0.22} darkness={0.78} />
+      </EffectComposer>
     </>
   )
 }
