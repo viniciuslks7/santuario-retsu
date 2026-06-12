@@ -1,0 +1,16 @@
+{
+  "name": "santuario-retsu-backend",
+  "version": "1.0.0",
+  "description": "API de lore do Santuário do Deserto do Clã Retsu",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
