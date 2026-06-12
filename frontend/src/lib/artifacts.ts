@@ -1,6 +1,8 @@
 // Sementes visuais dos artefatos (ids e cores espelham backend/src/data/siblings.js).
 // O lore completo vem da API no clique; aqui fica só o necessário pra montar a cena.
 
+import { duneHeight } from './dunes'
+
 export type ArtifactShape =
   | 'nodachi'
   | 'katana'
@@ -45,5 +47,11 @@ export function pedestalPosition(order: number): [number, number, number] {
   return [Math.cos(angle) * SHRINE_RADIUS, 0, Math.sin(angle) * SHRINE_RADIUS]
 }
 
-/** Onde a espada da Chosen está cravada, longe do círculo, meio enterrada na duna. */
-export const CHOSEN_POSITION: [number, number, number] = [26, 0.1, -17]
+/** Onde a espada da Chosen está cravada: longe do círculo, no alto de uma duna. */
+const CHOSEN_X = 26
+const CHOSEN_Z = -17
+export const CHOSEN_POSITION: [number, number, number] = [
+  CHOSEN_X,
+  duneHeight(CHOSEN_X, CHOSEN_Z) - 0.25,
+  CHOSEN_Z,
+]

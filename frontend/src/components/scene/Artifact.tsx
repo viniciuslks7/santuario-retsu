@@ -1,6 +1,10 @@
+import { useRef } from 'react'
 import type { ReactElement } from 'react'
-import { Float } from '@react-three/drei'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import { Float, useCursor } from '@react-three/drei'
 import type { ArtifactSeed, ArtifactShape } from '../../lib/artifacts'
+import { useShrineStore } from '../../store/useShrineStore'
 
 /** Geometria placeholder por tipo de arma — substituível por GLTF depois. */
 const SHAPE_GEOMETRY: Record<ArtifactShape, ReactElement> = {
@@ -18,10 +22,45 @@ interface ArtifactProps {
   position: [number, number, number]
 }
 
-/** Pedestal de pedra + arma placeholder flutuando com brilho emissivo do irmão. */
+/** Pedestal de pedra + arma placeholder flutuando. Hover acende o brilho
+ *  emissivo e amplia a arma; clique dispara a inspeção (CameraRig + overlay). */
 export function Artifact({ seed, position }: ArtifactProps) {
+  const select = useShrineStore((s) => s.select)
+  const setHovered = useShrineStore((s) => s.setHovered)
+  const hovered = useShrineStore((s) => s.hoveredSibling === seed.id)
+  useCursor(hovered)
+
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null)
+  const weaponRef = useRef<THREE.Mesh>(null)
+
+  useFrame((_, delta) => {
+    if (materialRef.current) {
+      materialRef.current.emissiveIntensity = THREE.MathUtils.damp(
+        materialRef.current.emissiveIntensity,
+        hovered ? 2.4 : 0.9,
+        6,
+        delta,
+      )
+    }
+    if (weaponRef.current) {
+      const s = THREE.MathUtils.damp(weaponRef.current.scale.x, hovered ? 1.14 : 1, 6, delta)
+      weaponRef.current.scale.setScalar(s)
+    }
+  })
+
   return (
-    <group position={position}>
+    <group
+      position={position}
+      onClick={(e) => {
+        e.stopPropagation()
+        select(seed.id)
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        setHovered(seed.id)
+      }}
+      onPointerOut={() => setHovered(null)}
+    >
       <mesh position-y={0.8} castShadow receiveShadow>
         <cylinderGeometry args={[0.62, 0.78, 1.6, 10]} />
         <meshStandardMaterial color="#6b573f" roughness={0.9} />
@@ -32,9 +71,10 @@ export function Artifact({ seed, position }: ArtifactProps) {
       </mesh>
 
       <Float speed={2.2} rotationIntensity={0.45} floatIntensity={0.7} floatingRange={[0, 0.35]}>
-        <mesh position-y={3} castShadow>
+        <mesh ref={weaponRef} position-y={3} castShadow>
           {SHAPE_GEOMETRY[seed.shape]}
           <meshStandardMaterial
+            ref={materialRef}
             color="#3a332c"
             roughness={0.35}
             metalness={0.7}

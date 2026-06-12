@@ -1,7 +1,9 @@
 import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { useCursor } from '@react-three/drei'
 import { Artifact } from './Artifact'
+import { useShrineStore } from '../../store/useShrineStore'
 import {
   ARTIFACT_SEEDS,
   CHOSEN_POSITION,
@@ -40,13 +42,43 @@ function CentralMonolith() {
   )
 }
 
-/** A Sem-Nome: espada denteada da Chosen, cravada na areia fora do círculo. */
+/** A Sem-Nome: espada denteada da Chosen, cravada na areia fora do círculo.
+ *  Quase apagada à distância — só "acorda" quando alguém a encontra. */
 function ChosenBlade() {
+  const select = useShrineStore((s) => s.select)
+  const setHovered = useShrineStore((s) => s.setHovered)
+  const hovered = useShrineStore((s) => s.hoveredSibling === CHOSEN_SEED.id)
+  useCursor(hovered)
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null)
+
+  useFrame((_, delta) => {
+    if (!materialRef.current) return
+    materialRef.current.emissiveIntensity = THREE.MathUtils.damp(
+      materialRef.current.emissiveIntensity,
+      hovered ? 1.4 : 0.15,
+      6,
+      delta,
+    )
+  })
+
   return (
-    <group position={CHOSEN_POSITION} rotation={[0.12, 0.7, -0.5]}>
+    <group
+      position={CHOSEN_POSITION}
+      rotation={[0.12, 0.7, -0.5]}
+      onClick={(e) => {
+        e.stopPropagation()
+        select(CHOSEN_SEED.id)
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        setHovered(CHOSEN_SEED.id)
+      }}
+      onPointerOut={() => setHovered(null)}
+    >
       <mesh position-y={1.4} castShadow>
         <boxGeometry args={[0.24, 3, 0.55]} />
         <meshStandardMaterial
+          ref={materialRef}
           color="#1f1d1b"
           roughness={0.55}
           metalness={0.8}
@@ -65,8 +97,15 @@ function ChosenBlade() {
 export function Shrine() {
   return (
     <group>
-      {/* Plataforma de pedra do santuário */}
-      <mesh position-y={0.22} receiveShadow castShadow>
+      {/* Plataforma de pedra do santuário — clique raso (sem arrasto) volta pra visão geral */}
+      <mesh
+        position-y={0.22}
+        receiveShadow
+        castShadow
+        onClick={(e) => {
+          if (e.delta < 4) useShrineStore.getState().clearSelection()
+        }}
+      >
         <cylinderGeometry args={[12.5, 13.2, 0.45, 48]} />
         <meshStandardMaterial color="#8a6d4d" roughness={0.95} />
       </mesh>

@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Sky } from '@react-three/drei'
+import { duneHeight } from '../../lib/dunes'
+import { useShrineStore } from '../../store/useShrineStore'
 
 /** Posição do sol baixo no horizonte — compartilhada entre Sky, luz e o disco solar. */
 export const SUN_DIRECTION = new THREE.Vector3(-0.55, 0.08, -0.82).normalize()
@@ -12,14 +14,8 @@ function useDuneGeometry() {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
-      // Camadas de senoides defasadas imitam dunas varridas pelo vento
-      const h =
-        Math.sin(x * 0.05 + y * 0.02) * Math.cos(y * 0.04) * 2.6 +
-        Math.sin(x * 0.13 - y * 0.09) * 0.9 +
-        Math.cos(x * 0.31 + y * 0.27) * 0.25
-      // Achata o centro pra abrigar o santuário
-      const flatten = THREE.MathUtils.smoothstep(Math.hypot(x, y), 13, 30)
-      pos.setZ(i, h * flatten)
+      // O plano vira o chão rodando -90° em X, então y do plano = -z do mundo
+      pos.setZ(i, duneHeight(x, -y))
     }
     geo.computeVertexNormals()
     return geo
@@ -64,7 +60,15 @@ export function DesertEnvironment() {
       <hemisphereLight args={['#ffb38a', '#4a3322', 0.55]} />
       <ambientLight intensity={0.12} />
 
-      <mesh geometry={dunes} rotation-x={-Math.PI / 2} receiveShadow>
+      {/* Clique raso na areia (sem arrasto de órbita) volta pra visão geral */}
+      <mesh
+        geometry={dunes}
+        rotation-x={-Math.PI / 2}
+        receiveShadow
+        onClick={(e) => {
+          if (e.delta < 4) useShrineStore.getState().clearSelection()
+        }}
+      >
         <meshStandardMaterial color="#c2884e" roughness={1} metalness={0} />
       </mesh>
     </>

@@ -1,4 +1,5 @@
 import { OrbitControls } from '@react-three/drei'
+import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
 import { Shrine } from './Shrine'
@@ -8,6 +9,7 @@ export function Experience() {
     <>
       <fog attach="fog" args={['#c97f52', 40, 160]} />
 
+      <CameraRig />
       <DesertEnvironment />
       <DustParticles />
       <Shrine />
