@@ -133,6 +133,26 @@ function jaggedBladeShape(len, w) {
   return s
 }
 
+/** Tubo orgânico ao longo de pontos (teias, fios, chicotes d'água). */
+function tube(points, radius, material, { segments = 32, radial = 6, name } = {}) {
+  const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)))
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, segments, radius, radial), material)
+  if (name) m.name = name
+  return m
+}
+
+/** Silhueta de katana com curvatura (sori) e ponta kissaki. */
+function curvedBladeShape(len, w, sori = 0.1) {
+  const s = new THREE.Shape()
+  s.moveTo(-w / 2, 0)
+  s.lineTo(w / 2, 0)
+  s.quadraticCurveTo(w / 2 + sori * 0.35, len * 0.55, w / 2 + sori, len * 0.92)
+  s.lineTo(sori * 0.55, len)
+  s.quadraticCurveTo(-w / 2 + sori * 0.45, len * 0.6, -w / 2, 0)
+  s.closePath()
+  return s
+}
+
 /** Punho enrolado (tsuka-ito): losangos alternados ao longo do cabo. */
 function wrappedHandle(parent, { y = 0, length = 0.62, radius = 0.055, mat: wm, p = [0, 0, 0] }) {
   const g = group(parent, { p })
@@ -240,11 +260,34 @@ function buildHaruki() {
   for (const [x, y, z, sc] of [[0.13, 0.05, 0.18, 1], [-0.12, -0.13, -0.16, 0.7], [0.1, 0.17, 0.16, 0.5]]) {
     add(webs, new THREE.SphereGeometry(0.1 * sc, 7, 4), web, { p: [x, y, z], s: [1, 0.25, 1] })
   }
+  // fios de teia esticados da guarda até a bainha (anos sem desembainhar)
+  webs.add(tube([[0.1, 0.02, 0.2], [0.16, -0.35, 0.24], [0.09, -0.7, 0.2]], 0.008, web))
+  webs.add(tube([[-0.1, -0.1, -0.18], [-0.15, -0.5, -0.2], [-0.08, -0.9, -0.21]], 0.006, web))
+  webs.add(tube([[0.11, 0.1, 0.17], [0.2, -0.15, 0.1], [0.13, -0.42, 0.23]], 0.005, web))
+  // aranha dona das teias, parada na bainha
+  const spider = group(g, { p: [0.09, 0.42, 0.24] })
+  add(spider, new THREE.SphereGeometry(0.045, 8, 6), blackIron(), { s: [1, 0.7, 1.2] })
+  for (const sx of [1, -1]) {
+    for (const [ly, lz] of [[0.02, 0.05], [0.0, -0.05]]) {
+      add(spider, new THREE.CylinderGeometry(0.006, 0.006, 0.12, 4), blackIron(), { p: [sx * 0.05, ly, lz], r: [0, 0, sx * 1.1] })
+    }
+  }
+  // mais ofudas colados na bainha, tortos de idade
+  const paper = mat('paper', '#d9cdb0', { roughness: 1 })
+  add(g, new THREE.BoxGeometry(0.02, 0.3, 0.16), paper, { p: [0.09, 0.62, 0.1], r: [0, 0, 0.14] })
+  add(g, new THREE.BoxGeometry(0.02, 0.26, 0.14), paper, { p: [-0.09, -0.32, -0.08], r: [0, 0, -0.18] })
+  add(g, new THREE.BoxGeometry(0.021, 0.05, 0.15), glowMat('#7cb342'), { p: [0.091, 0.66, 0.1], r: [0, 0, 0.14] })
+  // amuleto pendurado na guarda por um cordão, flutuando de leve
+  const charm = group(g, { p: [0.22, 1.32, 0], name: 'charm' })
+  charm.add(tube([[-0.05, 0.14, 0], [0, 0.06, 0], [0, 0, 0]], 0.006, blackIron()))
+  add(charm, new THREE.BoxGeometry(0.035, 0.16, 0.1), paper, { p: [0, -0.08, 0] })
+  add(charm, new THREE.BoxGeometry(0.037, 0.04, 0.08), glowMat('#7cb342'), { p: [0, -0.05, 0] })
   return {
     group: g,
     tracks: [
       pulseTrack('core', { base: 1, amp: 0.06, period: 3 }),
       swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.06, period: 5 }),
+      bobTrack('charm', { base: [0.22, 1.32, 0], amp: 0.025, period: 4.2, phase: 1.3 }),
     ],
   }
 }
@@ -252,19 +295,48 @@ function buildHaruki() {
 // 2. Setsuna — katana de iaijutsu, com anel temporal girando
 function buildSetsuna() {
   const g = new THREE.Group()
-  const blade = extrudeBlade(bladeShape(1.7, 0.17), 0.05, steel(), { p: [0, 0.6, 0] })
+  // lâmina curva (sori) — katana de verdade, não montante reto
+  const blade = extrudeBlade(curvedBladeShape(1.7, 0.15, 0.12), 0.045, polishedSteel(), { p: [0, 0.6, 0] })
   g.add(blade)
-  add(g, new THREE.BoxGeometry(0.016, 1.55, 0.022), glowMat('#90caf9'), { p: [0.075, 0.58, 0] }) // hi (sulco)
+  // hi (sulco) acompanhando a curvatura, em dois segmentos angulados
+  add(g, new THREE.BoxGeometry(0.014, 0.8, 0.05), glowMat('#90caf9'), { p: [0.05, 0.25, 0], r: [0, 0, -0.03] })
+  add(g, new THREE.BoxGeometry(0.014, 0.75, 0.05), glowMat('#90caf9'), { p: [0.1, 0.98, 0], r: [0, 0, -0.11] })
   add(g, new THREE.CylinderGeometry(0.1, 0.11, 0.1, 12), gold(), { p: [0, -0.28, 0] })
   g.add(lathe([[0.05, 0], [0.16, 0.005], [0.165, 0.03], [0.05, 0.035]], blackIron(), { segments: 20, p: [0, -0.36, 0] }))
   add(g, new THREE.TorusGeometry(0.155, 0.012, 8, 24), gold(), { p: [0, -0.345, 0], r: [Math.PI / 2, 0, 0] })
   wrappedHandle(g, { y: -0.68, length: 0.6, radius: 0.05, mat: mat('wrap', '#1f2a3a') })
   add(g, new THREE.SphereGeometry(0.06, 12, 8), darkIron(), { p: [0, -1.0, 0], s: [1, 0.7, 1] })
+  // eco do corte anterior: a mesma lâmina, apagada, um instante atrás.
+  // material próprio (não-'glow') pra ficar tênue — o app não anima este.
+  const echoMat = new THREE.MeshStandardMaterial({
+    name: 'echo',
+    color: '#0d1420',
+    emissive: '#90caf9',
+    emissiveIntensity: 0.35,
+    transparent: true,
+    opacity: 0.45,
+    roughness: 0.6,
+  })
+  const ghost = group(g, { p: [-0.26, 0.66, -0.1], r: [0, 0, 0.16], name: 'ghost' })
+  ghost.add(extrudeBlade(curvedBladeShape(1.7, 0.15, 0.12), 0.01, echoMat, { bevel: 0 }))
   // anel temporal girando à frente da ponta
   const ring = group(g, { p: [0, 1.35, 0.12], r: [0.5, 0, 0], name: 'spin' })
   add(ring, new THREE.TorusGeometry(0.2, 0.012, 8, 32), glowMat('#bbdefb'))
   add(ring, new THREE.TorusGeometry(0.13, 0.008, 6, 24), glowMat('#e3f2fd'))
-  return { group: g, tracks: [spinTrack('spin', 7, new THREE.Vector3(0, 0, 1))] }
+  // estilhaços de segundos: fragmentos orbitando a ponta em tempos dessincronizados
+  const tracks = [
+    spinTrack('spin', 7, new THREE.Vector3(0, 0, 1)),
+    pulseTrack('ghost', { base: 1, amp: 0.035, period: 3.4 }),
+  ]
+  for (let i = 0; i < 3; i++) {
+    const name = `shard${i}`
+    const node = group(g, { name })
+    add(node, new THREE.BoxGeometry(0.05, 0.05, 0.012), glowMat('#e3f2fd'), { r: [0.4, 0.8 * i, 0.3] })
+    const y = 1.15 + i * 0.18, r = 0.26 - i * 0.03
+    node.position.set(Math.cos(i * 2.1) * r, y, Math.sin(i * 2.1) * r)
+    tracks.push(orbitTrack(name, { radius: r, period: 4 + i * 1.3, phase: i * 2.1, y }))
+  }
+  return { group: g, tracks }
 }
 
 // 3. Lara — Minazuki Sanguínea, gotas de sangue orbitando
@@ -272,12 +344,17 @@ function buildLara() {
   const g = new THREE.Group()
   g.add(extrudeBlade(bladeShape(1.75, 0.2), 0.055, polishedSteel(), { p: [0, 0.6, 0] }))
   add(g, new THREE.BoxGeometry(0.07, 1.5, 0.05), glowMat('#d32f2f'), { p: [0, 0.55, 0], name: 'core' }) // goteira viva
-  // guarda meia-lua
+  // guarda meia-lua dupla (luas crescente e minguante espelhadas)
   add(g, new THREE.TorusGeometry(0.16, 0.03, 10, 24, Math.PI * 1.3), mat('guard', '#5c1010', { metalness: 0.8, roughness: 0.35 }), { p: [0, -0.34, 0], r: [Math.PI / 2, 0, 0.4] })
+  add(g, new THREE.TorusGeometry(0.12, 0.02, 8, 20, Math.PI * 1.1), mat('guard', '#5c1010', { metalness: 0.8, roughness: 0.35 }), { p: [0, -0.3, 0], r: [-Math.PI / 2, 0, -0.4] })
   add(g, new THREE.CylinderGeometry(0.06, 0.07, 0.08, 12), gold(), { p: [0, -0.28, 0] })
   wrappedHandle(g, { y: -0.66, length: 0.62, radius: 0.052, mat: mat('wrap', '#2a0a0a') })
   add(g, new THREE.SphereGeometry(0.07, 12, 8), mat('guard', '#5c1010', { metalness: 0.8 }), { p: [0, -1.0, 0] })
   add(g, new THREE.SphereGeometry(0.04, 8, 6), glowMat('#ff5252'), { p: [0, -1.0, 0.07] })
+  // sangue escorrendo da guarda — a lâmina bebe da própria dona
+  for (const [y, sz] of [[-0.44, 0.028], [-0.52, 0.02], [-0.61, 0.014]]) {
+    add(g, new THREE.SphereGeometry(sz, 8, 6), glowMat('#d32f2f'), { p: [0.1, y, 0.05], s: [1, 1.6, 1] })
+  }
   // gotas orbitando a lâmina em alturas diferentes
   const tracks = [pulseTrack('core', { base: 1, amp: 0.1, period: 2.4 })]
   const drops = [
@@ -293,6 +370,18 @@ function buildLara() {
     node.position.set(Math.cos(d.ph) * d.r, d.y, Math.sin(d.ph) * d.r)
     tracks.push(orbitTrack(name, { radius: d.r, period: d.per, phase: d.ph, y: d.y }))
   })
+  // Vorpais: lâminas crescentes de sangue que cada corte deixa no ar
+  for (let i = 0; i < 2; i++) {
+    const name = `vorpal${i}`
+    const node = group(g, { name })
+    add(node, new THREE.TorusGeometry(0.13, 0.018, 8, 20, Math.PI * 0.95), glowMat('#ff1744'), {
+      r: [0.4, i * 2.4, 1.1],
+      s: [1, 1, 0.4],
+    })
+    const y = 0.65 + i * 0.55, r = 0.36
+    node.position.set(Math.cos(i * 3) * r, y, Math.sin(i * 3) * r)
+    tracks.push(orbitTrack(name, { radius: r, period: 5.5 + i * 1.5, phase: i * 3, y }))
+  }
   return { group: g, tracks }
 }
 
@@ -310,13 +399,46 @@ function buildIwao() {
       add(g, new THREE.CylinderGeometry(0.045, 0.045, 0.26, 8), blackIron(), { p: [0, y, z], r: [0, 0, Math.PI / 2] })
     }
   }
+  // gume lascado: mordidas de ferro escuro cravadas na aresta incandescente
+  for (const [y, sc] of [[0.25, 1], [0.9, 0.7], [1.35, 1.2]]) {
+    add(g, new THREE.BoxGeometry(0.26, 0.12 * sc, 0.14), blackIron(), { p: [0, y, 0.44], r: [0.5, 0, 0.15] })
+  }
+  // rachaduras sísmicas irradiando do fio pelas faces do pilar
+  for (const sx of [1, -1]) {
+    add(g, new THREE.BoxGeometry(0.02, 0.5, 0.045), glowMat('#ffb74d'), { p: [sx * 0.12, 0.35, 0.28], r: [0.5, 0, sx * 0.35] })
+    add(g, new THREE.BoxGeometry(0.016, 0.34, 0.04), glowMat('#ff8a65'), { p: [sx * 0.12, 0.85, 0.2], r: [-0.4, 0, sx * -0.28] })
+  }
   add(g, new THREE.BoxGeometry(0.34, 0.2, 0.55), darkIron(), { p: [0, -0.62, 0] })
   add(g, new THREE.CylinderGeometry(0.1, 0.11, 0.85, 10), wood(), { p: [0, -1.1, 0] })
   for (const y of [-0.85, -1.1, -1.35]) {
     add(g, new THREE.TorusGeometry(0.11, 0.022, 6, 12), blackIron(), { p: [0, y, 0], r: [Math.PI / 2, 0, 0] })
   }
   add(g, new THREE.SphereGeometry(0.14, 8, 6), darkIron(), { p: [0, -1.56, 0] })
-  return { group: g, tracks: [pulseTrack('core', { base: 1, amp: 0.18, period: 3.5 })] }
+  // corrente de âncora presa na guarda, drapejando ao lado do cabo
+  // (no pomo ela afundaria no pedestal — o pomo encosta nele)
+  const chain = group(g, { p: [0.2, -0.66, 0], name: 'sway' })
+  for (let i = 0; i < 4; i++) {
+    add(chain, new THREE.TorusGeometry(0.055, 0.017, 6, 12), blackIron(), {
+      p: [0.04 + 0.02 * (i % 2 === 0 ? 1 : -1), -0.08 - i * 0.11, 0],
+      r: [i % 2 === 0 ? 0.2 : Math.PI / 2, 0.4 * i, 0],
+    })
+  }
+  add(chain, new THREE.BoxGeometry(0.1, 0.13, 0.07), darkIron(), { p: [0.05, -0.56, 0] })
+  // entulho arrancado do chão, orbitando devagar em volta do pilar
+  const stone = mat('stone', '#6b625a', { roughness: 0.95 })
+  const tracks = [
+    pulseTrack('core', { base: 1, amp: 0.18, period: 3.5 }),
+    swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.08, period: 4.2 }),
+  ]
+  for (let i = 0; i < 3; i++) {
+    const name = `rock${i}`
+    const node = group(g, { name })
+    add(node, new THREE.DodecahedronGeometry(0.06 + (i % 2) * 0.03, 0), stone, { r: [i, i * 2, 0] })
+    const y = 0.15 + i * 0.45, r = 0.6 + i * 0.08
+    node.position.set(Math.cos(i * 2.2) * r, y, Math.sin(i * 2.2) * r)
+    tracks.push(orbitTrack(name, { radius: r, period: 9 + i * 2, phase: i * 2.2, y }))
+  }
+  return { group: g, tracks }
 }
 
 // 5. Tsumugi — Fuso da Tecelã, anéis de luz girando + contas em espiral
@@ -332,15 +454,33 @@ function buildTsumugi() {
   for (const [y, rad] of [[-0.2, 0.17], [-0.05, 0.14], [0.1, 0.11], [0.25, 0.085], [0.4, 0.06]]) {
     add(coil, new THREE.TorusGeometry(rad, 0.02, 8, 22), glowMat('#ce93d8'), { p: [0, y, 0], r: [Math.PI / 2, 0, 0] })
   }
+  // o fio contínuo: hélice de luz que costura os anéis do pé ao topo
+  const helix = []
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14
+    const a = t * Math.PI * 5
+    const rad = 0.19 - t * 0.13
+    helix.push([Math.cos(a) * rad, -0.32 + t * 0.85, Math.sin(a) * rad])
+  }
+  coil.add(tube(helix, 0.011, glowMat('#e1bee7'), { segments: 60 }))
+  // teia de memórias: disco tecido girando ao contrário na base do fuso
+  const loom = group(g, { p: [0, -0.66, 0], name: 'loom' })
+  for (const rad of [0.3, 0.21, 0.12]) {
+    add(loom, new THREE.TorusGeometry(rad, 0.008, 6, 26), glowMat('#ce93d8'), { r: [Math.PI / 2, 0, 0] })
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI
+    add(loom, new THREE.BoxGeometry(0.62, 0.006, 0.014), glowMat('#f3d6ff'), { r: [0, a, 0] })
+  }
   // contas em espiral subindo (orbitam num nó próprio)
-  const tracks = [spinTrack('spin', 8)]
-  for (let i = 0; i < 4; i++) {
+  const tracks = [spinTrack('spin', 8), spinTrack('loom', 14, new THREE.Vector3(0, -1, 0))]
+  for (let i = 0; i < 6; i++) {
     const name = `bead${i}`
     const node = group(g, { name })
-    add(node, new THREE.SphereGeometry(0.026, 8, 6), glowMat('#f3d6ff'))
-    const y = 0.45 + i * 0.13
+    add(node, new THREE.SphereGeometry(0.026 - (i % 3) * 0.005, 8, 6), glowMat('#f3d6ff'))
+    const y = 0.45 + i * 0.11
     node.position.set(0.08, y, 0)
-    tracks.push(orbitTrack(name, { radius: 0.08, period: 5 + i, phase: i * 1.4, y }))
+    tracks.push(orbitTrack(name, { radius: 0.08 + (i % 2) * 0.03, period: 5 + i, phase: i * 1.4, y }))
   }
   add(g, new THREE.SphereGeometry(0.05, 12, 8), glowMat('#ce93d8'), { p: [0, 1.02, 0], name: 'tip' })
   tracks.push(bobTrack('tip', { base: [0, 1.02, 0], amp: 0.04, period: 4 }))
@@ -360,17 +500,36 @@ function buildRaizo() {
     add(bolt, new THREE.BoxGeometry(0.03, 0.58, 0.06), glowMat('#fffde7'), { p: [x, y, 0.08], r: [0, 0, rz] })
   }
   add(bolt, new THREE.ConeGeometry(0.08, 0.34, 4), glowMat('#fff59d'), { p: [0.02, 1.78, 0], r: [0, Math.PI / 4, 0.12], s: [0.6, 1, 1.6] })
+  // ramificações: o raio nunca sobe em linha reta
+  add(bolt, new THREE.BoxGeometry(0.04, 0.26, 0.07), glowMat('#fff176'), { p: [0.2, 0.58, 0], r: [0, 0, -0.95] })
+  add(bolt, new THREE.BoxGeometry(0.035, 0.2, 0.06), glowMat('#fff176'), { p: [-0.16, 1.02, 0.02], r: [0.1, 0, 0.85] })
+  add(bolt, new THREE.BoxGeometry(0.03, 0.17, 0.05), glowMat('#fffde7'), { p: [0.18, 1.44, -0.02], r: [-0.1, 0, -0.75] })
+  // orbe de energia crepitando onde o raio converge
+  add(bolt, new THREE.SphereGeometry(0.07, 10, 8), glowMat('#fffde7'), { p: [0.02, 1.95, 0], name: 'core' })
   add(g, new THREE.TorusGeometry(0.15, 0.025, 8, 20), darkIron(), { p: [0, -0.28, 0], r: [Math.PI / 2, 0, 0] })
   wrappedHandle(g, { y: -0.6, length: 0.56, radius: 0.05, mat: mat('wrap', '#3a3214') })
   add(g, new THREE.SphereGeometry(0.06, 10, 6), gold(), { p: [0, -0.9, 0] })
-  const tracks = [swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.05, period: 1.6 })]
-  for (let i = 0; i < 4; i++) {
+  const tracks = [
+    swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.05, period: 1.6 }),
+    pulseTrack('core', { base: 1, amp: 0.22, period: 1.1 }),
+  ]
+  for (let i = 0; i < 6; i++) {
     const name = `spark${i}`
     const node = group(g, { name })
     add(node, new THREE.SphereGeometry(0.022 + (i % 2) * 0.008, 5, 4), glowMat('#fff59d'))
-    const y = 0.4 + i * 0.32, r = 0.22 - (i % 2) * 0.04
+    const y = 0.3 + i * 0.26, r = 0.24 - (i % 2) * 0.05
     node.position.set(r, y, 0)
-    tracks.push(orbitTrack(name, { radius: r, period: 2.2 + i * 0.5, phase: i * 1.7, y }))
+    tracks.push(orbitTrack(name, { radius: r, period: 2.2 + i * 0.4, phase: i * 1.7, y }))
+  }
+  // pedras magnéticas em que ele afia o raio, presas na órbita da lâmina
+  const lodestone = mat('lodestone', '#2f3138', { metalness: 0.6, roughness: 0.7 })
+  for (let i = 0; i < 2; i++) {
+    const name = `stone${i}`
+    const node = group(g, { name })
+    add(node, new THREE.DodecahedronGeometry(0.075, 0), lodestone, { r: [i * 2, 1 + i, 0] })
+    const y = 0.55 + i * 0.6, r = 0.36
+    node.position.set(Math.cos(i * 2.8) * r, y, Math.sin(i * 2.8) * r)
+    tracks.push(orbitTrack(name, { radius: r, period: 7 + i * 2, phase: i * 2.8, y }))
   }
   return { group: g, tracks }
 }
@@ -385,13 +544,23 @@ function buildMizuki() {
     glaze, { segments: 30 },
   ))
   add(g, new THREE.TorusGeometry(0.43, 0.02, 8, 30), gold(), { p: [0, -0.12, 0], r: [Math.PI / 2, 0, 0] })
+  // faixas de esmalte pintadas no bojo
+  add(g, new THREE.TorusGeometry(0.455, 0.012, 6, 30), mat('paint', '#5f7d8a', { roughness: 0.4 }), { p: [0, -0.3, 0], r: [Math.PI / 2, 0, 0] })
+  add(g, new THREE.TorusGeometry(0.415, 0.01, 6, 30), mat('paint', '#5f7d8a', { roughness: 0.4 }), { p: [0, 0.02, 0], r: [Math.PI / 2, 0, 0] })
   for (const sx of [1, -1]) {
     add(g, new THREE.TorusGeometry(0.11, 0.03, 8, 14), ceramic, { p: [0.42 * sx, -0.12, 0], r: [0, 0, Math.PI / 2] })
   }
+  // espelho d'água na boca do cântaro
+  add(g, new THREE.CylinderGeometry(0.14, 0.14, 0.02, 20), glowMat('#4dd0e1'), { p: [0, 0.45, 0] })
   // laço d'água viva girando acima da boca
   const water = group(g, { p: [0, 0.85, 0], name: 'spin' })
   add(water, new THREE.TorusGeometry(0.42, 0.05, 12, 28), glowMat('#4dd0e1'), { r: [0.5, 0, 0] })
   add(water, new THREE.TorusGeometry(0.28, 0.035, 10, 24), glowMat('#80deea'), { r: [0.5, 0.6, 0] })
+  // chicotes pressurizados: arcos d'água abrindo pra fora, acima dos anéis
+  water.add(tube([[0.05, -0.42, 0], [0.32, -0.05, 0.16], [0.58, 0.42, 0.04], [0.46, 0.82, -0.24]], 0.028, glowMat('#4dd0e1'), { segments: 40 }))
+  water.add(tube([[-0.06, -0.42, 0.02], [-0.36, 0.02, -0.14], [-0.54, 0.5, 0.1], [-0.3, 0.88, 0.28]], 0.022, glowMat('#80deea'), { segments: 40 }))
+  add(water, new THREE.SphereGeometry(0.04, 8, 6), glowMat('#4dd0e1'), { p: [0.46, 0.82, -0.24] })
+  add(water, new THREE.SphereGeometry(0.032, 8, 6), glowMat('#80deea'), { p: [-0.3, 0.88, 0.28] })
   const tracks = [spinTrack('spin', 9)]
   for (let i = 0; i < 3; i++) {
     const name = `drop${i}`
@@ -421,13 +590,37 @@ function buildRanmaru() {
   add(cracks, new THREE.BoxGeometry(0.035, 0.85, 0.035), glowMat('#ff7043'), { p: [0.14, 0.75, 0.08], r: [0.1, 0, 0.12] })
   add(cracks, new THREE.BoxGeometry(0.028, 0.55, 0.028), glowMat('#ff7043'), { p: [-0.12, 0.95, -0.09], r: [-0.08, 0, -0.1] })
   add(cracks, new THREE.BoxGeometry(0.022, 0.4, 0.022), glowMat('#ffab91'), { p: [0.05, 0.5, -0.15], r: [0, 0.2, 0.05] })
+  // escombros do mundo antigo cravados na madeira: meia lâmina erudita quebrada…
+  add(g, new THREE.BoxGeometry(0.045, 0.34, 0.11), steel(), { p: [0.17, 0.88, 0.06], r: [0.35, 0.2, 0.85] })
+  // …uma engrenagem enferrujada…
+  const gearHub = group(g, { p: [-0.15, 0.58, 0.1], r: [1.1, 0.3, 0] })
+  add(gearHub, new THREE.TorusGeometry(0.08, 0.028, 6, 12), darkIron())
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2
+    add(gearHub, new THREE.BoxGeometry(0.035, 0.05, 0.03), darkIron(), { p: [Math.cos(a) * 0.11, Math.sin(a) * 0.11, 0], r: [0, 0, a] })
+  }
+  // …e uma placa dourada de outra era, torta e meio engolida
+  add(g, new THREE.BoxGeometry(0.09, 0.13, 0.025), gold(), { p: [0.04, 1.12, -0.17], r: [0.3, 0.5, 0.2] })
+  // cravos maiores, tortos como se batidos sem paciência
+  for (const [a, y, tilt] of [[0.6, 0.32, 0.3], [2.9, 0.72, -0.25], [4.4, 1.05, 0.2]]) {
+    add(g, new THREE.ConeGeometry(0.06, 0.2, 5), blackIron(), {
+      p: [Math.cos(a) * 0.17, y, Math.sin(a) * 0.17],
+      r: [Math.PI / 2 + tilt, 0, -a],
+    })
+  }
   wrappedHandle(g, { y: -0.78, length: 0.5, radius: 0.07, mat: mat('rawhide', '#241b13') })
   add(g, new THREE.SphereGeometry(0.1, 8, 6), darkIron(), { p: [0, -1.08, 0] })
+  // tira de couro cru amarrada no pomo, balançando
+  const strap = group(g, { p: [0, -1.08, 0], name: 'sway' })
+  add(strap, new THREE.BoxGeometry(0.05, 0.3, 0.015), mat('rawhide', '#241b13'), { p: [0.08, -0.18, 0], r: [0.1, 0, 0.25] })
+  add(strap, new THREE.BoxGeometry(0.04, 0.22, 0.012), mat('rawhide', '#33271d'), { p: [-0.06, -0.14, 0.03], r: [-0.08, 0, -0.2] })
+  add(strap, new THREE.TorusGeometry(0.045, 0.012, 6, 10), darkIron(), { p: [0.08, -0.36, 0] })
   return {
     group: g,
     tracks: [
       pulseTrack('core', { base: 1, amp: 0.14, period: 2.0 }),
       swayTrack('core', { axis: new THREE.Vector3(0, 1, 0), amp: 0.05, period: 4 }),
+      swayTrack('sway', { axis: new THREE.Vector3(1, 0, 0), amp: 0.1, period: 3.8, phase: 0.9 }),
     ],
   }
 }
@@ -436,10 +629,25 @@ function buildRanmaru() {
 function buildKyoya() {
   const g = new THREE.Group()
   add(g, new THREE.CylinderGeometry(0.05, 0.06, 1.15, 10), wood(), { p: [0, 0.45, 0] })
+  // amarrações toscas de corda pelo cabo — nada de escola, nada de padrão
+  for (const y of [0.15, 0.42, 0.7]) {
+    add(g, new THREE.TorusGeometry(0.062, 0.014, 6, 12), mat('rope', '#6b5a3e', { roughness: 0.95 }), { p: [0, y, 0], r: [Math.PI / 2, 0, 0] })
+  }
   add(g, new THREE.TorusGeometry(0.06, 0.012, 6, 12), darkIron(), { p: [0, 0.95, 0], r: [Math.PI / 2, 0, 0] })
   add(g, new THREE.TorusGeometry(0.52, 0.055, 10, 26, Math.PI * 0.8), steel(), { p: [0.08, 1.08, 0], r: [0, 0, -0.4], s: [1, 1, 0.45] })
   add(g, new THREE.TorusGeometry(0.46, 0.02, 8, 26, Math.PI * 0.8), glowMat('#ab47bc'), { p: [0.08, 1.08, 0], r: [0, 0, -0.4], s: [1, 1, 0.5] })
+  // mossas no dorso da foice: dentes de uso sem manutenção
+  for (const [x, y, a] of [[0.45, 1.35, 0.5], [0.55, 1.1, 0.1], [0.5, 0.85, -0.3]]) {
+    add(g, new THREE.BoxGeometry(0.07, 0.05, 0.14), blackIron(), { p: [x, y, 0], r: [0, 0, a] })
+  }
   add(g, new THREE.ConeGeometry(0.06, 0.2, 6), steel(), { p: [-0.34, 1.45, 0], r: [0, 0, 1.2] })
+  // páginas rasgadas dos manuais do clã, espetadas no cabo, esvoaçando
+  const paper = mat('paper', '#d9cdb0', { roughness: 1 })
+  const pages = group(g, { p: [0, 0.62, 0], name: 'pages' })
+  for (const [x, y, z, rz, len] of [[0.09, 0, 0.04, 0.5, 0.3], [-0.08, -0.12, -0.03, -0.65, 0.24], [0.05, -0.28, -0.06, 0.35, 0.2]]) {
+    add(pages, new THREE.BoxGeometry(0.1, len, 0.012), paper, { p: [x, y, z], r: [0.15, 0.4, rz] })
+    add(pages, new THREE.BoxGeometry(0.07, len * 0.5, 0.014), blackIron(), { p: [x, y - 0.02, z], r: [0.15, 0.4, rz] })
+  }
   // corrente pendurada que balança a partir do topo do cabo
   const chain = group(g, { p: [0, 0.95, 0], name: 'sway' })
   for (let i = 0; i < 8; i++) {
@@ -450,7 +658,23 @@ function buildKyoya() {
   }
   add(chain, new THREE.ConeGeometry(0.1, 0.24, 6), darkIron(), { p: [0, -1.5, 0], r: [Math.PI, 0, 0] })
   add(chain, new THREE.SphereGeometry(0.06, 8, 6), blackIron(), { p: [0, -1.35, 0] })
-  return { group: g, tracks: [swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.12, period: 4.5 })] }
+  // segunda corrente, curta, terminando num gancho — imprevisível como o dono
+  const chain2 = group(g, { p: [-0.34, 1.45, 0], name: 'sway2' })
+  for (let i = 0; i < 4; i++) {
+    add(chain2, new THREE.TorusGeometry(0.045, 0.014, 6, 12), darkIron(), {
+      p: [0.02 * (i % 2 === 0 ? 1 : -1), -0.1 - i * 0.12, 0],
+      r: [i % 2 === 0 ? 0.2 : Math.PI / 2, 0.5 * i, 0],
+    })
+  }
+  add(chain2, new THREE.TorusGeometry(0.06, 0.02, 6, 14, Math.PI * 1.2), steel(), { p: [0, -0.62, 0], r: [0, 0, 2.2] })
+  return {
+    group: g,
+    tracks: [
+      swayTrack('sway', { axis: new THREE.Vector3(0, 0, 1), amp: 0.12, period: 4.5 }),
+      swayTrack('sway2', { axis: new THREE.Vector3(1, 0, 0), amp: 0.16, period: 3.1, phase: 2 }),
+      swayTrack('pages', { axis: new THREE.Vector3(1, 0, 0), amp: 0.09, period: 2.7, phase: 1.2 }),
+    ],
+  }
 }
 
 // 10. Chosen — A Sem-Nome, montante denteado e COESO (lâmina extrudada)
