@@ -17,7 +17,9 @@ try {
     if (msg.type() === 'error') console.error('[console.error]', msg.text())
   })
   await page.setViewport({ width: 1600, height: 900 })
-  await page.goto(url, { waitUntil: 'networkidle0' })
+  // 'load' em vez de 'networkidle0': o HMR do Vite mantém requests pingando
+  // e o idle nunca fecha — a espera fixa abaixo já cobre o carregamento dos GLB
+  await page.goto(url, { waitUntil: 'load' })
   await new Promise((r) => setTimeout(r, Number(waitMs)))
   const state = await page.evaluate(() => globalThis.__shrineDebug?.())
   console.log('estado:', JSON.stringify(state))

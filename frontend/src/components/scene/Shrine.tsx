@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html, useCursor } from '@react-three/drei'
 import { Artifact, useIdleAnimation, useWeaponModel } from './Artifact'
+import { PagodaRoof, WindowWall } from './Landmarks'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
   ARTIFACT_SEEDS,
@@ -45,35 +46,50 @@ function CentralMonolith() {
       onPointerOut={() => useShrineStore.getState().setHovered(null)}
     >
       <group ref={ref}>
-        {/* corpo principal */}
+        {/* corpo principal — pedra escura, como a fortaleza-mãe no horizonte */}
         <mesh castShadow>
-          <boxGeometry args={[2.2, 5.4, 1.3]} />
+          <boxGeometry args={[2.2, 4.6, 1.8]} />
           <meshStandardMaterial
-            color="#2e2620"
-            roughness={0.6}
+            color="#241c15"
+            roughness={0.8}
             emissive="#d4a017"
-            emissiveIntensity={hovered ? 0.4 : 0.18}
+            emissiveIntensity={hovered ? 0.3 : 0.08}
           />
+        </mesh>
+        {/* faixa de pedra a meia altura */}
+        <mesh position-y={0.4}>
+          <boxGeometry args={[2.34, 0.22, 1.94]} />
+          <meshStandardMaterial color="#3a2e22" roughness={0.85} />
         </mesh>
         {/* torres laterais — silhueta de fortaleza */}
         {[-1, 1].map((sx) => (
-          <mesh key={sx} castShadow position={[sx * 1.35, -0.6, 0]}>
-            <boxGeometry args={[0.55, 3.6, 0.7]} />
-            <meshStandardMaterial color="#241d18" roughness={0.7} emissive="#d4a017" emissiveIntensity={0.12} />
-          </mesh>
+          <group key={sx} position={[sx * 1.5, -0.9, 0]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.65, 2.8, 0.8]} />
+              <meshStandardMaterial color="#241d18" roughness={0.8} emissive="#d4a017" emissiveIntensity={0.06} />
+            </mesh>
+            <group position-y={1.4}>
+              <PagodaRoof baseW={0.85} tiers={1} tierH={0.5} />
+            </group>
+          </group>
         ))}
-        {/* coroa de ameias no topo */}
-        <mesh castShadow position-y={2.9}>
-          <boxGeometry args={[2.5, 0.4, 1.6]} />
-          <meshStandardMaterial color="#1f1914" roughness={0.7} />
-        </mesh>
-        {/* janelas acesas */}
-        {[1.0, 0.2, -0.6].map((y) => (
-          <mesh key={y} position={[0, y, 0.66]}>
-            <boxGeometry args={[0.9, 0.18, 0.04]} />
-            <meshBasicMaterial color="#ffcf6b" />
-          </mesh>
-        ))}
+        {/* janelas acesas nas quatro faces (mesmo brilho HDR da fortaleza-mãe) */}
+        <group position={[0, -2.1, 0.92]}>
+          <WindowWall w={2.2} h={4.2} z={0} cols={2} rows={4} />
+        </group>
+        <group rotation-y={Math.PI} position={[0, -2.1, -0.92]}>
+          <WindowWall w={2.2} h={4.2} z={0} cols={2} rows={4} />
+        </group>
+        <group rotation-y={Math.PI / 2} position={[1.12, -2.1, 0]}>
+          <WindowWall w={1.8} h={4.2} z={0} cols={2} rows={4} />
+        </group>
+        <group rotation-y={-Math.PI / 2} position={[-1.12, -2.1, 0]}>
+          <WindowWall w={1.8} h={4.2} z={0} cols={2} rows={4} />
+        </group>
+        {/* telhado de pagode coroando o monólito */}
+        <group position-y={2.3}>
+          <PagodaRoof baseW={2.7} tiers={3} tierH={0.75} />
+        </group>
       </group>
 
       {/* Duplo anel de runas de gravidade no chão sob o monólito */}
@@ -104,20 +120,23 @@ function ChosenBlade() {
   const select = useShrineStore((s) => s.select)
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === CHOSEN_SEED.id)
+  const selected = useShrineStore((s) => s.selectedSibling === CHOSEN_SEED.id)
   useCursor(hovered)
   const { model, glowMaterials, animations } = useWeaponModel(CHOSEN_SEED.id)
   useIdleAnimation(model, animations)
 
   useFrame((_, delta) => {
+    // Encontrada (hover) ou em inspeção: a pressão espiritual acorda
+    const lit = hovered || selected
     for (const m of glowMaterials) {
-      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, hovered ? 1.6 : 0.1, 6, delta)
+      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, lit ? 1.6 : 0.1, 6, delta)
     }
   })
 
   return (
     <group
       position={CHOSEN_POSITION}
-      rotation={[0.12, 0.7, -0.5]}
+      rotation={[0.1, -0.85, -0.34]}
       onClick={(e) => {
         e.stopPropagation()
         select(CHOSEN_SEED.id)

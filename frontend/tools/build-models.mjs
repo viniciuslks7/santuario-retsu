@@ -111,18 +111,22 @@ function bladeShape(len, w, tipFrac = 0.18) {
 /** Silhueta denteada e irregular — a lâmina brutalizada da Chosen. */
 function jaggedBladeShape(len, w) {
   const s = new THREE.Shape()
-  const steps = 6
+  const steps = 9
   s.moveTo(-w / 2, 0)
   s.lineTo(w / 2, 0)
   for (let i = 1; i <= steps; i++) {
     const y = (i / steps) * len * 0.84
-    const jut = i % 2 === 0 ? w / 2 : w * 0.32 // dentes alternados na gume
+    // dentes fundos e irregulares na gume (vale quase até o eixo da lâmina)
+    const jut = i % 2 === 0 ? w * (0.5 + (i % 4 === 0 ? 0.1 : 0)) : w * 0.12
     s.lineTo(jut, y)
   }
-  s.lineTo(0.02, len) // ponta
+  // ponta quebrada: degrau diagonal em vez de ponta limpa
+  s.lineTo(w * 0.3, len * 0.9)
+  s.lineTo(w * 0.05, len * 0.86)
+  s.lineTo(-w * 0.18, len)
   for (let i = steps; i >= 1; i--) {
     const y = (i / steps) * len * 0.84
-    const sp = -w / 2 - (i % 3 === 0 ? 0.035 : 0) // dorso levemente lascado
+    const sp = -w / 2 - (i % 3 === 0 ? 0.08 : 0) // dorso lascado
     s.lineTo(sp, y)
   }
   s.closePath()
@@ -452,17 +456,24 @@ function buildKyoya() {
 // 10. Chosen — A Sem-Nome, montante denteado e COESO (lâmina extrudada)
 function buildChosen() {
   const g = new THREE.Group()
-  const ash = mat('ash', '#6e6a66', { metalness: 0.72, roughness: 0.55 })
+  const ash = mat('ash', '#8a8682', { metalness: 0.85, roughness: 0.42 })
   const rust = mat('rust', '#5a4034', { metalness: 0.4, roughness: 0.85 })
-  // lâmina sólida denteada
-  const blade = extrudeBlade(jaggedBladeShape(2.3, 0.5), 0.13, ash, { p: [0, 1.0, 0] })
+  // lâmina sólida denteada, mais grossa
+  const blade = extrudeBlade(jaggedBladeShape(2.3, 0.5), 0.16, ash, { p: [0, 1.0, 0] })
   g.add(blade)
-  // manchas de ferrugem aplicadas sobre a face
-  for (const [y, z] of [[0.55, 0.16], [1.25, -0.14], [1.9, 0.1]]) {
-    add(g, new THREE.BoxGeometry(0.14, 0.26, 0.1), rust, { p: [0, y, z] })
+  // goteira escura ao longo do eixo (contraste com o aço claro)
+  add(g, new THREE.BoxGeometry(0.09, 1.9, 0.19), blackIron(), { p: [-0.08, 0.92, 0] })
+  // faixas de ferrugem incrustadas, atravessando a lâmina (leem nas duas faces)
+  for (const y of [0.55, 1.25, 1.9]) {
+    add(g, new THREE.BoxGeometry(0.2, 0.16, 0.2), rust, { p: [0.03, y, 0], r: [0, 0, 0.3] })
   }
-  // núcleo de pressão espiritual percorrendo a lâmina — pulsa
-  add(g, new THREE.BoxGeometry(0.05, 2.15, 0.05), glowMat('#e0e0e0'), { p: [0, 1.0, 0], name: 'core' })
+  // rebites toscos cravados na lâmina perto da guarda
+  for (const [x, y] of [[0.12, 0.15], [-0.1, 0.32], [0.02, 0.02]]) {
+    add(g, new THREE.SphereGeometry(0.035, 6, 5), darkIron(), { p: [x, y, 0.09] })
+  }
+  // núcleo de pressão espiritual percorrendo a lâmina — atravessa as duas
+  // faces (mais fundo que a espessura) pra ler como costura incandescente
+  add(g, new THREE.BoxGeometry(0.05, 2.15, 0.24), glowMat('#e0e0e0'), { p: [0.06, 1.0, 0], name: 'core' })
   // guarda tosca de ferro batido
   add(g, new THREE.BoxGeometry(0.74, 0.16, 0.22), darkIron(), { p: [0, -0.18, 0] })
   add(g, new THREE.BoxGeometry(0.22, 0.12, 0.28), blackIron(), { p: [0, -0.18, 0] })

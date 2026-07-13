@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Sky } from '@react-three/drei'
+import { Environment, Lightformer, Sky } from '@react-three/drei'
 import { duneHeight } from '../../lib/dunes'
 import { useShrineStore } from '../../store/useShrineStore'
 
@@ -61,6 +61,18 @@ export function DesertEnvironment() {
       />
       <hemisphereLight args={['#ffb38a', '#4a3322', 0.55]} />
       <ambientLight intensity={0.12} />
+
+      {/* Envmap procedural local (sem fetch): dá reflexo ao metal das armas,
+          que sem environment renderiza quase preto. */}
+      <Environment resolution={64} frames={1}>
+        <color attach="background" args={['#241b14']} />
+        {/* céu quente acima */}
+        <Lightformer form="rect" intensity={0.9} color="#ffb38a" position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[12, 12, 1]} />
+        {/* sol poente rasante */}
+        <Lightformer form="circle" intensity={3} color="#ffd9a0" position={[-6, 1.5, -9]} scale={[3.5, 3.5, 1]} />
+        {/* rebatida fria do lado oposto, pra aresta de metal ler */}
+        <Lightformer form="rect" intensity={0.5} color="#7a8aa0" position={[7, 2, 6]} rotation-y={-Math.PI / 3} scale={[8, 4, 1]} />
+      </Environment>
 
       {/* Clique raso na areia (sem arrasto de órbita) volta pra visão geral */}
       <mesh

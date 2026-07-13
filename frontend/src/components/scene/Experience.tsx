@@ -9,7 +9,7 @@ import { Shrine } from './Shrine'
 export function Experience() {
   return (
     <>
-      <fog attach="fog" args={['#c97f52', 40, 160]} />
+      <fog attach="fog" args={['#c97f52', 40, 200]} />
 
       <CameraRig />
       <DesertEnvironment />

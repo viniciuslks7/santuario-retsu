@@ -53,6 +53,7 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const select = useShrineStore((s) => s.select)
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === seed.id)
+  const selected = useShrineStore((s) => s.selectedSibling === seed.id)
   const summary = useShrineStore((s) => s.siblingIndex[seed.id])
   useCursor(hovered)
 
@@ -61,8 +62,10 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const weaponRef = useRef<THREE.Group>(null)
 
   useFrame((_, delta) => {
+    // Em inspeção a arma também acende — o close não fica apagado
+    const lit = hovered || selected
     for (const m of glowMaterials) {
-      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, hovered ? 3.2 : 1.2, 6, delta)
+      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, lit ? 3.2 : 1.2, 6, delta)
     }
     if (weaponRef.current) {
       const s = THREE.MathUtils.damp(weaponRef.current.scale.x, hovered ? 1.14 : 1, 6, delta)

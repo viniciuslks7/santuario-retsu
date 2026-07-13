@@ -1,7 +1,9 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { Html, useCursor } from '@react-three/drei'
 import { duneHeight } from '../../lib/dunes'
+import { useShrineStore } from '../../store/useShrineStore'
 
 const FORT_STONE = '#2a221b'
 const FORT_TRIM = '#3a2e22'
@@ -9,7 +11,7 @@ const FORT_TRIM = '#3a2e22'
 const WINDOW_GLOW = new THREE.Color(4.2, 2.4, 0.9)
 
 /** Telhado de pagode: águas empilhadas (frustos de 4 lados) + pináculo dourado. */
-function PagodaRoof({ baseW, tiers = 3, tierH }: { baseW: number; tiers?: number; tierH: number }) {
+export function PagodaRoof({ baseW, tiers = 3, tierH }: { baseW: number; tiers?: number; tierH: number }) {
   return (
     <group>
       {Array.from({ length: tiers }, (_, i) => {
@@ -38,7 +40,7 @@ function PagodaRoof({ baseW, tiers = 3, tierH }: { baseW: number; tiers?: number
 }
 
 /** Janelas acesas numa face (grade), levemente salientes. */
-function WindowWall({ w, h, z, cols, rows }: { w: number; h: number; z: number; cols: number; rows: number }) {
+export function WindowWall({ w, h, z, cols, rows }: { w: number; h: number; z: number; cols: number; rows: number }) {
   const out = []
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
@@ -84,7 +86,7 @@ function CastleTower({ h, w, tiers, lit = true }: { h: number; w: number; tiers:
         <WindowWall w={w} h={h} z={0} cols={3} rows={5} />
       </group>
       <group position-y={h}>
-        <PagodaRoof baseW={w * 1.15} tiers={tiers} tierH={w * 0.42} />
+        <PagodaRoof baseW={w * 1.15} tiers={tiers} tierH={w * 0.3} />
       </group>
     </group>
   )
@@ -95,15 +97,38 @@ function CastleTower({ h, w, tiers, lit = true }: { h: number; w: number; tiers:
 function LibraryOfTheEnd() {
   const ref = useRef<THREE.Group>(null)
   const runesRef = useRef<THREE.Group>(null)
+  const openClan = useShrineStore((s) => s.openClan)
+  const hovered = useShrineStore((s) => s.hoveredSibling === '__library__')
+  useCursor(hovered)
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime
     // flutua baixo, de modo que o corpo das torres assente no horizonte
-    if (ref.current) ref.current.position.y = -7 + Math.sin(t * 0.15) * 0.7
+    if (ref.current) ref.current.position.y = -4 + Math.sin(t * 0.15) * 0.7
     if (runesRef.current) runesRef.current.rotation.y += delta * 0.08
   })
 
   return (
-    <group position={[40, 0, -100]} rotation-y={-0.5} scale={1.15}>
+    <group
+      position={[46, 0, -118]}
+      rotation-y={-0.5}
+      onClick={(e) => {
+        e.stopPropagation()
+        openClan()
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        useShrineStore.getState().setHovered('__library__')
+      }}
+      onPointerOut={() => useShrineStore.getState().setHovered(null)}
+    >
+      {hovered && (
+        <Html center position-y={26} className="pointer-events-none select-none">
+          <div className="border border-amber-500/60 bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm">
+            <p className="text-[10px] tracking-[0.35em] text-amber-200/70 uppercase">A fortaleza do clã</p>
+            <p className="font-display text-sm text-stone-100">A Biblioteca do Fim</p>
+          </div>
+        </Html>
+      )}
       <group ref={ref}>
         {/* ── ilha rochosa invertida, compacta, sob a fortaleza ── */}
         <mesh position-y={-7} castShadow>
@@ -140,25 +165,25 @@ function LibraryOfTheEnd() {
 
         {/* ── torre-mestra central, com muitas águas ── */}
         <group position={[0, 3, 0]}>
-          <CastleTower h={22} w={11} tiers={4} />
+          <CastleTower h={13} w={9} tiers={3} />
         </group>
         {/* ── torres flanqueando, alturas variadas ── */}
         <group position={[-13, 3, 3]}>
-          <CastleTower h={16} w={6.5} tiers={3} />
+          <CastleTower h={9} w={6} tiers={2} />
         </group>
         <group position={[13, 3, -2]}>
-          <CastleTower h={19} w={7.5} tiers={3} />
+          <CastleTower h={11} w={6.5} tiers={2} />
         </group>
         <group position={[9, 3, 9]}>
-          <CastleTower h={15} w={5} tiers={3} lit={false} />
+          <CastleTower h={8} w={4.5} tiers={2} lit={false} />
         </group>
         <group position={[-10, 3, -8]}>
-          <CastleTower h={17} w={5.5} tiers={3} />
+          <CastleTower h={10} w={5} tiers={2} />
         </group>
 
         {/* ── ponte suspensa ligando duas torres ── */}
-        <mesh position={[-6.5, 16, 1.5]} rotation-z={0.05} castShadow>
-          <boxGeometry args={[13, 0.8, 2.4]} />
+        <mesh position={[-6.5, 9.5, 1.5]} rotation-z={0.05} castShadow>
+          <boxGeometry args={[13, 0.7, 2.2]} />
           <meshStandardMaterial color={FORT_TRIM} roughness={0.85} />
         </mesh>
 
@@ -273,11 +298,111 @@ function Stub({ scale }: { scale: number }) {
   )
 }
 
+/** Costelas de um colosso morto, meio enterradas na duna — arcos decrescentes. */
+function Ribcage({ scale = 1 }: { scale?: number }) {
+  const bone = <meshStandardMaterial color="#b3a58c" roughness={0.9} flatShading />
+  return (
+    <group scale={scale}>
+      {Array.from({ length: 6 }, (_, i) => {
+        const s = 1 - i * 0.11
+        return (
+          <mesh key={i} position={[0, -0.6, i * 2.1]} rotation={[0, 0, 0.12 * (i % 2 === 0 ? 1 : -1)]} castShadow>
+            <torusGeometry args={[4.4 * s, 0.32 * s, 7, 20, Math.PI * 0.92]} />
+            {bone}
+          </mesh>
+        )
+      })}
+      {/* espinha ligando os arcos */}
+      <mesh position={[0, 3.4, 5.2]} rotation-x={Math.PI / 2} castShadow>
+        <cylinderGeometry args={[0.35, 0.42, 12.5, 8]} />
+        {bone}
+      </mesh>
+      {/* crânio tombado à frente */}
+      <mesh position={[1.2, -0.2, -3.4]} rotation={[0.4, 0.9, 0.2]} castShadow>
+        <dodecahedronGeometry args={[1.5]} />
+        {bone}
+      </mesh>
+    </group>
+  )
+}
+
+/** Árvore petrificada: tronco torto + galhos nus, tudo flatShading. */
+function PetrifiedTree({ scale = 1, bend = 0.2 }: { scale?: number; bend?: number }) {
+  const barkMat = <meshStandardMaterial color="#3d332b" roughness={1} flatShading />
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.6, 0]} rotation-z={bend} castShadow>
+        <cylinderGeometry args={[0.16, 0.34, 3.4, 6]} />
+        {barkMat}
+      </mesh>
+      <mesh position={[0.5, 3.0, 0.1]} rotation-z={bend + 0.7} castShadow>
+        <cylinderGeometry args={[0.05, 0.12, 1.7, 5]} />
+        {barkMat}
+      </mesh>
+      <mesh position={[-0.35, 3.2, -0.1]} rotation={[0.2, 0, bend - 0.85]} castShadow>
+        <cylinderGeometry args={[0.04, 0.1, 1.4, 5]} />
+        {barkMat}
+      </mesh>
+      <mesh position={[0.15, 3.9, 0.25]} rotation={[0.5, 0, bend + 0.25]} castShadow>
+        <cylinderGeometry args={[0.03, 0.07, 1.1, 5]} />
+        {barkMat}
+      </mesh>
+    </group>
+  )
+}
+
+/** Atalaia arruinada no horizonte oposto à Biblioteca — contrapeso da composição. */
+function RuinedWatchtower() {
+  return (
+    <group position={[-72, 0, -108]} rotation-y={0.35}>
+      <mesh position-y={7} castShadow>
+        <cylinderGeometry args={[3.2, 4.4, 16, 9]} />
+        <meshStandardMaterial color="#2f261d" roughness={0.9} flatShading />
+      </mesh>
+      {/* topo rasgado: dentes irregulares */}
+      {[0, 1.4, 2.8, 4.4].map((a, i) => (
+        <mesh key={i} position={[Math.cos(a) * 2.6, 15.5 + (i % 2), Math.sin(a) * 2.6]} rotation-y={a} castShadow>
+          <boxGeometry args={[1.6, 2.4 + (i % 2) * 1.2, 1.1]} />
+          <meshStandardMaterial color="#2a221a" roughness={0.9} flatShading />
+        </mesh>
+      ))}
+      {/* única janela ainda acesa — alguém vigia */}
+      <mesh position={[1.2, 11, 2.9]}>
+        <boxGeometry args={[0.7, 0.9, 0.3]} />
+        <meshBasicMaterial color={WINDOW_GLOW} toneMapped={false} fog={false} />
+      </mesh>
+      {/* escombros na base */}
+      {[[3.8, 0.6, 1.2], [-3.2, 0.4, 2.6], [1.6, 0.5, -4.0]].map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]} rotation={[x, z, x * z]} castShadow>
+          <dodecahedronGeometry args={[1.1 + (i % 2) * 0.5]} />
+          <meshStandardMaterial color="#2f261d" roughness={1} flatShading />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 export function Landmarks() {
   const ruins = useRuins()
   return (
     <group>
       <LibraryOfTheEnd />
+      <RuinedWatchtower />
+      {/* colosso caído a sudoeste, fora do anel de ruínas */}
+      <group position={[-40, duneHeight(-40, -26), -26]} rotation-y={1.15}>
+        <Ribcage scale={1.15} />
+      </group>
+      {/* floresta petrificada do Leste — o passeio do Haruki */}
+      {(
+        [
+          [52, -38, 1.4, 0.24], [57, -30, 1.0, -0.18], [48, -25, 0.8, 0.4],
+          [63, -40, 1.25, 0.1], [55, -48, 0.9, -0.32], [44, -33, 0.7, 0.18],
+        ] as const
+      ).map(([x, z, s, bend], i) => (
+        <group key={i} position={[x, duneHeight(x, z) - 0.15, z]} rotation-y={i * 1.3}>
+          <PetrifiedTree scale={s} bend={bend} />
+        </group>
+      ))}
       {ruins.map((r, i) => (
         <group key={i} position={r.pos} rotation-y={r.rot}>
           {r.kind === 'torii' && <Torii scale={r.scale} />}
