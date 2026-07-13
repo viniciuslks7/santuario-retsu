@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Float, Html, useAnimations, useCursor, useGLTF } from '@react-three/drei'
+import { useInspectSpin } from './useInspectSpin'
 import type { ArtifactSeed } from '../../lib/artifacts'
 import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
 import { useShrineStore } from '../../store/useShrineStore'
@@ -60,6 +61,7 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const { model, glowMaterials, animations } = useWeaponModel(seed.id)
   useIdleAnimation(model, animations)
   const weaponRef = useRef<THREE.Group>(null)
+  const spinRef = useInspectSpin(selected)
 
   useFrame((_, delta) => {
     // Em inspeção a arma também acende — o close não fica apagado
@@ -96,7 +98,10 @@ export function Artifact({ seed, position }: ArtifactProps) {
       </mesh>
 
       <Float speed={2.2} rotationIntensity={0.45} floatIntensity={0.7} floatingRange={[0, 0.35]}>
-        <primitive ref={weaponRef} object={model} position-y={3.2} />
+        {/* pivô do giro na altura da arma, senão o pitch orbita em vez de inclinar */}
+        <group position-y={3.2} ref={spinRef}>
+          <primitive ref={weaponRef} object={model} />
+        </group>
       </Float>
 
       {/* Luz pontual fraca pra arma "banhar" o pedestal com sua cor */}

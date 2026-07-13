@@ -29,6 +29,15 @@ export function Hud() {
           arraste para orbitar · clique num artefato para inspecionar · clique na fortaleza para o lore do clã
         </p>
       </footer>
+
+      {/* Dica da inspeção — só aparece com um artefato selecionado */}
+      <footer
+        className={`pointer-events-none fixed bottom-0 left-1/2 z-10 -translate-x-1/2 p-6 transition-all duration-700 ${inspecting ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      >
+        <p className="text-xs tracking-[0.3em] text-amber-100/50 uppercase">
+          arraste para girar a arma · esc ou clique na areia para voltar
+        </p>
+      </footer>
     </>
   )
 }

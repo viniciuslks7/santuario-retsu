@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html, useCursor } from '@react-three/drei'
 import { Artifact, useIdleAnimation, useWeaponModel } from './Artifact'
+import { useInspectSpin } from './useInspectSpin'
 import { PagodaRoof, WindowWall } from './Landmarks'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
@@ -124,6 +125,7 @@ function ChosenBlade() {
   useCursor(hovered)
   const { model, glowMaterials, animations } = useWeaponModel(CHOSEN_SEED.id)
   useIdleAnimation(model, animations)
+  const spinRef = useInspectSpin(selected)
 
   useFrame((_, delta) => {
     // Encontrada (hover) ou em inspeção: a pressão espiritual acorda
@@ -147,7 +149,10 @@ function ChosenBlade() {
       }}
       onPointerOut={() => setHovered(null)}
     >
-      <primitive object={model} position-y={1.1} />
+      {/* pivô do giro no meio da lâmina */}
+      <group position-y={1.1} ref={spinRef}>
+        <primitive object={model} />
+      </group>
 
       {hovered && (
         <Html center position-y={3.4} className="pointer-events-none select-none">
