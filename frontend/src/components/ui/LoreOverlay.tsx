@@ -1,7 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
-import { fetchLore } from '../../lib/api'
-import type { SiblingLore, SiblingStats } from '../../lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useGLTF } from '@react-three/drei'
+import { fetchLore, LoreError } from '../../lib/api'
+import type { LoreErrorKind, SiblingLore, SiblingStats } from '../../lib/api'
 import { useShrineStore } from '../../store/useShrineStore'
+import { countTriangles, weaponToStl } from '../../lib/exportStl'
+
+const ERROR_COPY: Record<LoreErrorKind, { title: string; hint: string }> = {
+  'not-found': {
+    title: 'A Biblioteca do Fim não guarda registros desse nome.',
+    hint: 'Esse artefato não pertence a nenhum dos irmãos catalogados.',
+  },
+  offline: {
+    title: 'A Biblioteca do Fim está em silêncio.',
+    hint: 'A API de lore não respondeu — confirme que o backend está de pé (porta 3001).',
+  },
+  server: {
+    title: 'Os Arquivistas tropeçaram ao recuperar este pergaminho.',
+    hint: 'O servidor respondeu com erro. Tente novamente em instantes.',
+  },
+}
 
 const STAT_LABELS: Record<keyof SiblingStats, string> = {
   forca: 'Força',
@@ -11,25 +28,11 @@ const STAT_LABELS: Record<keyof SiblingStats, string> = {
   sanidade: 'Sanidade',
 }
 
-/** Gera um STL ASCII simbólico do artefato (mock de exportação para
- *  impressão 3D multicolor — a malha real viria do GLB em produção). */
-function buildMockStl(lore: SiblingLore): string {
-  const v = [
-    ['0 0 0', '40 0 0', '20 0 34.6'],
-    ['0 0 0', '20 0 34.6', '20 60 17.3'],
-    ['40 0 0', '20 60 17.3', '20 0 34.6'],
-    ['0 0 0', '20 60 17.3', '40 0 0'],
-  ]
-  const facets = v
-    .map(
-      ([a, b, c]) =>
-        `facet normal 0 0 0\n  outer loop\n    vertex ${a}\n    vertex ${b}\n    vertex ${c}\n  endloop\nendfacet`,
-    )
-    .join('\n')
-  return `solid ${lore.id}_${lore.weapon.name.replace(/\s+/g, '_')}\n${facets}\nendsolid ${lore.id}\n`
-}
-
+/** Exporta a malha real da arma (GLB → STL binário). A geometria do arquivo
+ *  é exatamente a que flutua no pedestal — sem mock. */
 function ExportStlButton({ lore }: { lore: SiblingLore }) {
+  const { scene } = useGLTF(`/models/${lore.id}.glb`)
+  const tris = useMemo(() => countTriangles(scene), [scene])
   const [phase, setPhase] = useState<'idle' | 'slicing' | 'done'>('idle')
   const [progress, setProgress] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -50,7 +53,7 @@ function ExportStlButton({ lore }: { lore: SiblingLore }) {
         const next = p + 4 + Math.random() * 9
         if (next < 100) return next
         if (timerRef.current) clearInterval(timerRef.current)
-        const blob = new Blob([buildMockStl(lore)], { type: 'model/stl' })
+        const blob = weaponToStl(scene)
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -83,6 +86,7 @@ function ExportStlButton({ lore }: { lore: SiblingLore }) {
   return (
     <button
       onClick={start}
+      title={`${tris.toLocaleString('pt-BR')} triângulos`}
       className="flex-1 cursor-pointer border border-(--accent) bg-(--accent)/15 px-4 py-2.5 text-xs font-semibold tracking-[0.25em] text-stone-100 uppercase transition hover:bg-(--accent)/35"
     >
       {phase === 'done' ? 'STL exportado ✓' : 'Exportar STL'}
@@ -114,16 +118,19 @@ export function LoreOverlay() {
   const isAnimating = useShrineStore((s) => s.isAnimating)
   const clearSelection = useShrineStore((s) => s.clearSelection)
   const [lore, setLore] = useState<SiblingLore | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [errorKind, setErrorKind] = useState<LoreErrorKind | null>(null)
 
   useEffect(() => {
     if (!selected) return
     let alive = true
     setLore(null)
-    setFailed(false)
+    setErrorKind(null)
     fetchLore(selected)
       .then((data) => alive && setLore(data))
-      .catch(() => alive && setFailed(true))
+      .catch((err) => {
+        if (!alive) return
+        setErrorKind(err instanceof LoreError ? err.kind : 'server')
+      })
     return () => {
       alive = false
     }
@@ -131,6 +138,7 @@ export function LoreOverlay() {
 
   const open = Boolean(selected) && !isAnimating
   const accent = lore?.color ?? '#d4a017'
+  const errorCopy = errorKind ? ERROR_COPY[errorKind] : null
 
   return (
     <aside
@@ -140,17 +148,16 @@ export function LoreOverlay() {
         open ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-16 opacity-0'
       }`}
     >
-      {!lore && !failed && (
+      {!lore && !errorCopy && (
         <p className="m-auto animate-pulse text-xs tracking-[0.4em] text-stone-400 uppercase">
           Consultando a Biblioteca do Fim…
         </p>
       )}
 
-      {failed && (
+      {errorCopy && (
         <div className="m-auto px-10 text-center">
-          <p className="text-sm text-stone-300">
-            A Biblioteca do Fim não respondeu. O backend está de pé?
-          </p>
+          <p className="font-display text-lg text-stone-100">{errorCopy.title}</p>
+          <p className="mt-3 text-sm leading-relaxed text-stone-400">{errorCopy.hint}</p>
           <button
             onClick={clearSelection}
             className="mt-6 cursor-pointer border border-white/20 px-4 py-2 text-xs tracking-[0.25em] uppercase hover:bg-white/10"
@@ -247,7 +254,8 @@ export function LoreOverlay() {
           </div>
 
           <p className="mt-3 text-[10px] leading-relaxed text-stone-600">
-            Malha de alta resolução otimizada para impressão multicolor por filamento (mock).
+            STL binário da malha real do artefato, escalado para ~100&nbsp;mm de altura — pronto
+            para fatiar.
           </p>
         </div>
       )}

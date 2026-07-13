@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Experience } from './components/scene/Experience'
 import { Hud } from './components/ui/Hud'
 import { LoreOverlay } from './components/ui/LoreOverlay'
+import { ClanOverlay } from './components/ui/ClanOverlay'
 import { fetchSiblingIndex } from './lib/api'
 import { useShrineStore } from './store/useShrineStore'
 
@@ -29,6 +30,7 @@ function App() {
 
       <Hud />
       <LoreOverlay />
+      <ClanOverlay />
     </div>
   )
 }

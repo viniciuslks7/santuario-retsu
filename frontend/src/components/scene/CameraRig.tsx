@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import { useThree } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useShrineStore } from '../../store/useShrineStore'
-import { getShot, OVERVIEW_SHOT } from '../../lib/cameraShots'
+import { CLAN_SHOT, getShot, OVERVIEW_SHOT } from '../../lib/cameraShots'
 
 /** Conduz a câmera com GSAP entre a visão geral e o close de cada artefato.
  *  OrbitControls fica desabilitado durante o trânsito e na inspeção. */
@@ -11,6 +11,7 @@ export function CameraRig() {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const selectedSibling = useShrineStore((s) => s.selectedSibling)
+  const clanOpen = useShrineStore((s) => s.clanOpen)
   const setAnimating = useShrineStore((s) => s.setAnimating)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
   const firstRunRef = useRef(true)
@@ -44,14 +45,15 @@ export function CameraRig() {
 
   useEffect(() => {
     if (!controls) return
-    if (firstRunRef.current && !selectedSibling) {
+    const inspecting = Boolean(selectedSibling) || clanOpen
+    if (firstRunRef.current && !inspecting) {
       // Carga inicial já está na visão geral: nada a animar
       firstRunRef.current = false
       return
     }
     firstRunRef.current = false
 
-    const shot = selectedSibling ? getShot(selectedSibling) : OVERVIEW_SHOT
+    const shot = clanOpen ? CLAN_SHOT : selectedSibling ? getShot(selectedSibling) : OVERVIEW_SHOT
     timelineRef.current?.kill()
     controls.enabled = false
     setAnimating(true)
@@ -61,7 +63,7 @@ export function CameraRig() {
       onUpdate: () => controls.update(),
       onComplete: () => {
         setAnimating(false)
-        if (!selectedSibling) controls.enabled = true
+        if (!inspecting) controls.enabled = true
       },
     })
     const [px, py, pz] = shot.position
@@ -73,7 +75,7 @@ export function CameraRig() {
     return () => {
       tl.kill()
     }
-  }, [selectedSibling, controls, camera, setAnimating])
+  }, [selectedSibling, clanOpen, controls, camera, setAnimating])
 
   return null
 }

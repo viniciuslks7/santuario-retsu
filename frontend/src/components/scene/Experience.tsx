@@ -3,6 +3,7 @@ import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocess
 import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
+import { Landmarks } from './Landmarks'
 import { Shrine } from './Shrine'
 
 export function Experience() {
@@ -12,6 +13,7 @@ export function Experience() {
 
       <CameraRig />
       <DesertEnvironment />
+      <Landmarks />
       <DustParticles />
       <Shrine />
 

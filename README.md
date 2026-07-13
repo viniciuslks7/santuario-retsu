@@ -1,6 +1,14 @@
 # O Santuário do Deserto do Clã Retsu
 
-Diorama 3D interativo: um santuário no deserto com 9 artefatos dos irmãos samurai do Clã Retsu. Câmera cinematográfica (GSAP), lore servida por API e exportação STL (mock).
+Diorama 3D interativo: um santuário no deserto com 9 artefatos dos irmãos samurai do Clã Retsu (e um décimo, escondido). Câmera cinematográfica (GSAP), lore servida por API, ambiente com a Biblioteca do Fim ao horizonte e ruínas, e exportação STL da malha real de cada arma.
+
+## Interações
+
+- **Clique num artefato** → câmera voa pro close + painel de lore (direita).
+- **Clique na fortaleza central (monólito)** → lore do clã + contador de descoberta (esquerda).
+- **Exportar STL** → baixa a malha real da arma (STL binário, ~100 mm), pronta pra fatiar.
+- **Clique na areia / fora / `Esc`** → volta pra visão geral.
+- **Deep-link** `?focus=<id>` abre direto num artefato.
 
 ## Stack
 
@@ -27,6 +35,7 @@ cd frontend && npm run dev
 
 ```bash
 # Regenera os GLB procedurais das armas (frontend/public/models/)
+# Cada arma tem 9–40 peças; a malha gerada aqui é a mesma exportada como STL.
 cd frontend && node tools/build-models.mjs
 
 # Screenshot headless + estado da cena (precisa do dev server de pé)

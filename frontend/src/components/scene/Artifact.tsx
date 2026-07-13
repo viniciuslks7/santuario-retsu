@@ -1,17 +1,18 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { Float, Html, useCursor, useGLTF } from '@react-three/drei'
+import { Float, Html, useAnimations, useCursor, useGLTF } from '@react-three/drei'
 import type { ArtifactSeed } from '../../lib/artifacts'
 import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
 import { useShrineStore } from '../../store/useShrineStore'
 
 /** Carrega o GLB da arma e clona materiais por instância.
  *  Materiais chamados "glow" (definidos em tools/build-models.mjs) já trazem
- *  a cor emissiva do irmão; aqui só animamos a intensidade. */
+ *  a cor emissiva do irmão; aqui só animamos a intensidade. Devolve também os
+ *  AnimationClips embutidos no GLB (clip "idle") pra tocar com useAnimations. */
 export function useWeaponModel(id: string) {
-  const { scene } = useGLTF(`/models/${id}.glb`)
-  return useMemo(() => {
+  const { scene, animations } = useGLTF(`/models/${id}.glb`)
+  const built = useMemo(() => {
     const model = scene.clone(true)
     const glowMaterials: THREE.MeshStandardMaterial[] = []
     model.traverse((obj) => {
@@ -23,6 +24,18 @@ export function useWeaponModel(id: string) {
     })
     return { model, glowMaterials }
   }, [scene])
+  return { ...built, animations }
+}
+
+/** Toca o clip idle embutido no GLB sobre o modelo clonado (mixer por instância). */
+export function useIdleAnimation(model: THREE.Object3D, animations: THREE.AnimationClip[]) {
+  const { actions } = useAnimations(animations, model)
+  useEffect(() => {
+    const idle = actions.idle
+    if (!idle) return
+    idle.reset().setLoop(THREE.LoopRepeat, Infinity).play()
+    return () => void idle.stop()
+  }, [actions])
 }
 
 for (const seed of [...ARTIFACT_SEEDS, CHOSEN_SEED]) {
@@ -43,7 +56,8 @@ export function Artifact({ seed, position }: ArtifactProps) {
   const summary = useShrineStore((s) => s.siblingIndex[seed.id])
   useCursor(hovered)
 
-  const { model, glowMaterials } = useWeaponModel(seed.id)
+  const { model, glowMaterials, animations } = useWeaponModel(seed.id)
+  useIdleAnimation(model, animations)
   const weaponRef = useRef<THREE.Group>(null)
 
   useFrame((_, delta) => {

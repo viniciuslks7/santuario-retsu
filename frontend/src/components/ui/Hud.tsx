@@ -26,7 +26,7 @@ export function Hud() {
         className={`pointer-events-none fixed bottom-0 left-1/2 z-10 -translate-x-1/2 p-6 transition-all duration-700 ${fade}`}
       >
         <p className="text-xs tracking-[0.3em] text-amber-100/50 uppercase">
-          arraste para orbitar · clique num artefato para inspecionar
+          arraste para orbitar · clique num artefato para inspecionar · clique na fortaleza para o lore do clã
         </p>
       </footer>
     </>

@@ -16,6 +16,12 @@ export const OVERVIEW_SHOT: CameraShot = {
   target: [0, 2.5, 0],
 }
 
+/** Close do monólito central (a Biblioteca do Fim em miniatura). */
+export const CLAN_SHOT: CameraShot = {
+  position: [4.5, 5.2, 9.5],
+  target: [0, 3.6, 0],
+}
+
 /** Enquadramento macro de cada artefato: câmera fora do círculo, levemente
  *  deslocada pro lado, olhando o artefato com o coração do santuário ao fundo. */
 export function getShot(siblingId: string): CameraShot {

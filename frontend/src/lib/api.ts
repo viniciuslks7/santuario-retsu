@@ -36,13 +36,39 @@ export interface SiblingLore {
   stats: SiblingStats
 }
 
+/** Erro de lore com a causa já classificada, pra UI escolher a mensagem certa. */
+export type LoreErrorKind = 'not-found' | 'offline' | 'server'
+
+export class LoreError extends Error {
+  kind: LoreErrorKind
+  constructor(kind: LoreErrorKind, message: string) {
+    super(message)
+    this.name = 'LoreError'
+    this.kind = kind
+  }
+}
+
 const loreCache = new Map<string, SiblingLore>()
 
 export async function fetchLore(siblingId: string): Promise<SiblingLore> {
   const cached = loreCache.get(siblingId)
   if (cached) return cached
-  const res = await fetch(`/api/lore/${siblingId}`)
-  if (!res.ok) throw new Error(`lore ${siblingId}: HTTP ${res.status}`)
+
+  let res: Response
+  try {
+    res = await fetch(`/api/lore/${siblingId}`)
+  } catch {
+    // fetch só rejeita por falha de rede — backend fora do ar, DNS, CORS…
+    throw new LoreError('offline', `lore ${siblingId}: rede indisponível`)
+  }
+
+  if (res.status === 404) {
+    throw new LoreError('not-found', `lore ${siblingId}: sem registro`)
+  }
+  if (!res.ok) {
+    throw new LoreError('server', `lore ${siblingId}: HTTP ${res.status}`)
+  }
+
   const data = (await res.json()) as SiblingLore
   loreCache.set(siblingId, data)
   return data
@@ -52,4 +78,25 @@ export async function fetchSiblingIndex(): Promise<SiblingSummary[]> {
   const res = await fetch('/api/lore')
   if (!res.ok) throw new Error(`índice de lore: HTTP ${res.status}`)
   return (await res.json()) as SiblingSummary[]
+}
+
+export interface ClanLore {
+  clan: string
+  fortress: string
+  prologue: string
+}
+
+let clanCache: ClanLore | null = null
+
+export async function fetchClan(): Promise<ClanLore> {
+  if (clanCache) return clanCache
+  let res: Response
+  try {
+    res = await fetch('/api/clan')
+  } catch {
+    throw new LoreError('offline', 'clã: rede indisponível')
+  }
+  if (!res.ok) throw new LoreError('server', `clã: HTTP ${res.status}`)
+  clanCache = (await res.json()) as ClanLore
+  return clanCache
 }
