@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html, useCursor } from '@react-three/drei'
 import { Artifact, useIdleAnimation, useWeaponModel } from './Artifact'
+import { ArtifactAura } from './ArtifactAura'
 import { useInspectSpin } from './useInspectSpin'
 import { PagodaRoof, WindowWall } from './Landmarks'
 import { useShrineStore } from '../../store/useShrineStore'
@@ -191,6 +192,14 @@ export function Shrine() {
       ))}
 
       <ChosenBlade />
+
+      {/* Cinzas da Chosen montadas fora do ChosenBlade: o grupo dela é rotacionado
+          e a queda das cinzas precisa continuar vertical */}
+      <group position={CHOSEN_POSITION}>
+        <group position-y={1.1}>
+          <ArtifactAura id={CHOSEN_SEED.id} color={CHOSEN_SEED.color} />
+        </group>
+      </group>
     </group>
   )
 }

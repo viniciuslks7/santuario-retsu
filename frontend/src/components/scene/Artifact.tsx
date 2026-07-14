@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Float, Html, useAnimations, useCursor, useGLTF } from '@react-three/drei'
 import { useInspectSpin } from './useInspectSpin'
+import { ArtifactAura } from './ArtifactAura'
 import type { ArtifactSeed } from '../../lib/artifacts'
 import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
 import { useShrineStore } from '../../store/useShrineStore'
@@ -103,6 +104,11 @@ export function Artifact({ seed, position }: ArtifactProps) {
           <primitive ref={weaponRef} object={model} />
         </group>
       </Float>
+
+      {/* Aura elemental do irmão, na altura da arma (fora do Float: tem movimento próprio) */}
+      <group position-y={3.2}>
+        <ArtifactAura id={seed.id} color={seed.color} />
+      </group>
 
       {/* Luz pontual fraca pra arma "banhar" o pedestal com sua cor */}
       <pointLight position-y={3} color={seed.color} intensity={2.5} distance={5} decay={2} />
