@@ -19,4 +19,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Idioma do R3F: useFrame/GSAP mutam objetos three.js (camera, controls,
+    // materiais) fora do render — a regra de imutabilidade do React Compiler
+    // não se aplica a esse loop imperativo.
+    files: ['src/components/scene/**/*.{ts,tsx}'],
+    rules: {
+      'react-hooks/immutability': 'off',
+    },
+  },
 ])

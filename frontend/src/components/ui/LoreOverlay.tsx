@@ -37,13 +37,12 @@ function ExportStlButton({ lore }: { lore: SiblingLore }) {
   const [progress, setProgress] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Estado zera por remount (key={lore.id} no uso); aqui só o cleanup do timer
   useEffect(() => {
-    setPhase('idle')
-    setProgress(0)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [lore.id])
+  }, [])
 
   const start = () => {
     setPhase('slicing')
@@ -123,6 +122,9 @@ export function LoreOverlay() {
   useEffect(() => {
     if (!selected) return
     let alive = true
+    // Reset síncrono intencional: remount via key esvaziaria o painel durante
+    // o slide-out; o flash de conteúdo antigo é mascarado pelo voo da câmera.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLore(null)
     setErrorKind(null)
     fetchLore(selected)
@@ -240,7 +242,7 @@ export function LoreOverlay() {
           {/* hanko do clã */}
           <div className="mt-10 flex items-end justify-between">
             <div className="flex w-full gap-3">
-              <ExportStlButton lore={lore} />
+              <ExportStlButton key={lore.id} lore={lore} />
               <button
                 onClick={clearSelection}
                 className="cursor-pointer border border-white/20 px-4 py-2.5 text-xs tracking-[0.25em] text-stone-300 uppercase transition hover:bg-white/10"

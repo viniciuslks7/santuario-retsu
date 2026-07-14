@@ -5,7 +5,7 @@ import { duneHeight } from '../../lib/dunes'
 import { useShrineStore } from '../../store/useShrineStore'
 
 /** Posição do sol baixo no horizonte — compartilhada entre Sky, luz e o disco solar. */
-export const SUN_DIRECTION = new THREE.Vector3(-0.55, 0.08, -0.82).normalize()
+const SUN_DIRECTION = new THREE.Vector3(-0.55, 0.08, -0.82).normalize()
 
 const sunDiscColor = new THREE.Color(3.2, 2.2, 1.2)
 

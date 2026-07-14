@@ -16,6 +16,9 @@ export function ClanOverlay() {
   useEffect(() => {
     if (!clanOpen) return
     let alive = true
+    // Reset síncrono intencional: sem ele, retry com sucesso continuaria
+    // mostrando o erro antigo; remount via key esvaziaria o slide-out.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFailed(false)
     fetchClan()
       .then((data) => alive && setClan(data))
