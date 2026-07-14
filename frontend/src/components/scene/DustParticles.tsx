@@ -18,6 +18,8 @@ interface DustSeed {
 export function DustParticles({ count = 350 }: { count?: number }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
+  // tempo de vento acumulado: rajadas mudam a velocidade sem teleportar a poeira
+  const windTimeRef = useRef(0)
 
   const seeds = useMemo<DustSeed[]>(
     () =>
@@ -33,14 +35,18 @@ export function DustParticles({ count = 350 }: { count?: number }) {
     [count],
   )
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const mesh = meshRef.current
     if (!mesh) return
     const t = clock.elapsedTime
+    // O vento respira: duas senoides dessincronizadas viram rajadas e calmarias
+    const gust = 0.55 + 0.45 * Math.sin(t * 0.22) + 0.25 * Math.sin(t * 0.53 + 1.7)
+    windTimeRef.current += delta * THREE.MathUtils.clamp(gust, 0.15, 1.25)
+    const wt = windTimeRef.current
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i]
-      // Vento constante no eixo X, com wrap-around dentro dos limites
-      const x = ((s.x + t * s.speed * 2 + BOUNDS) % (BOUNDS * 2)) - BOUNDS
+      // Vento no eixo X com wrap-around dentro dos limites
+      const x = ((s.x + wt * s.speed * 2 + BOUNDS) % (BOUNDS * 2)) - BOUNDS
       const y = s.y + Math.sin(t * s.bob + s.phase) * 0.9
       const z = s.z + Math.sin(t * 0.12 + s.phase) * 2
       dummy.position.set(x, y, z)
