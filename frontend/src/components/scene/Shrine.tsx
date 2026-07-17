@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html, useCursor } from '@react-three/drei'
@@ -14,6 +14,7 @@ import {
   CHOSEN_SEED,
   pedestalPosition,
 } from '../../lib/artifacts'
+import { playWeaponChime, playWeaponDraw } from '../../lib/weaponAudio'
 
 /** Monólito central: miniatura da Biblioteca do Fim, levitando sobre runas.
  *  Clicável: abre o lore do clã (GET /api/clan). */
@@ -124,16 +125,19 @@ function ChosenBlade() {
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === CHOSEN_SEED.id)
   const selected = useShrineStore((s) => s.selectedSibling === CHOSEN_SEED.id)
+  // depois da tempestade a lâmina não volta a dormir
+  const awakened = useShrineStore((s) => s.stormPhase === 'done')
   useCursor(hovered)
   const { model, glowMaterials, animations } = useWeaponModel(CHOSEN_SEED.id)
   useIdleAnimation(model, animations)
   const spinRef = useInspectSpin(selected)
 
   useFrame((_, delta) => {
-    // Encontrada (hover) ou em inspeção: a pressão espiritual acorda
+    // Encontrada (hover), em inspeção ou desperta: a pressão espiritual acorda
     const lit = hovered || selected
+    const target = lit ? 1.6 : awakened ? 0.8 : 0.1
     for (const m of glowMaterials) {
-      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, lit ? 1.6 : 0.1, 6, delta)
+      m.emissiveIntensity = THREE.MathUtils.damp(m.emissiveIntensity, target, 6, delta)
     }
   })
 
@@ -143,10 +147,12 @@ function ChosenBlade() {
       rotation={[0.1, -0.85, -0.34]}
       onClick={(e) => {
         e.stopPropagation()
+        playWeaponDraw(CHOSEN_SEED.order)
         select(CHOSEN_SEED.id)
       }}
       onPointerOver={(e) => {
         e.stopPropagation()
+        if (!hovered) playWeaponChime(CHOSEN_SEED.order)
         setHovered(CHOSEN_SEED.id)
       }}
       onPointerOut={() => setHovered(null)}
@@ -166,6 +172,49 @@ function ChosenBlade() {
           </div>
         </Html>
       )}
+    </group>
+  )
+}
+
+/** Pilar de luz pálida sobre a Sem-Nome — o farol que a tempestade acende.
+ *  Cor HDR (>1) pro Bloom estourar de leve; opacidade sobe em fade lento. */
+function AwakenedBeacon() {
+  const awakened = useShrineStore((s) => s.stormPhase === 'done')
+  const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  const lightRef = useRef<THREE.PointLight>(null)
+  const beaconColor = useMemo(() => new THREE.Color(1.7, 1.6, 1.4), [])
+
+  useFrame(({ clock }, delta) => {
+    const target = awakened ? 0.14 + Math.sin(clock.elapsedTime * 1.3) * 0.035 : 0
+    if (matRef.current) {
+      matRef.current.opacity = THREE.MathUtils.damp(matRef.current.opacity, target, 1.1, delta)
+    }
+    if (lightRef.current) {
+      lightRef.current.intensity = THREE.MathUtils.damp(
+        lightRef.current.intensity,
+        awakened ? 3 : 0,
+        1.1,
+        delta,
+      )
+    }
+  })
+
+  return (
+    <group position={CHOSEN_POSITION}>
+      <mesh position-y={7} raycast={() => null}>
+        <cylinderGeometry args={[0.4, 0.9, 14, 20, 1, true]} />
+        <meshBasicMaterial
+          ref={matRef}
+          color={beaconColor}
+          toneMapped={false}
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      <pointLight ref={lightRef} position-y={2.4} color="#e8e2d4" intensity={0} distance={10} decay={2} />
     </group>
   )
 }
@@ -193,6 +242,7 @@ export function Shrine() {
       ))}
 
       <ChosenBlade />
+      <AwakenedBeacon />
 
       {/* Cinzas da Chosen montadas fora do ChosenBlade: o grupo dela é rotacionado
           e a queda das cinzas precisa continuar vertical */}

@@ -33,7 +33,7 @@ try {
 
   const findButton = async () => {
     const handle = await page.evaluateHandle(() =>
-      [...document.querySelectorAll('button')].find((b) => b.textContent.includes('vento')),
+      [...document.querySelectorAll('button')].find((b) => b.textContent.includes('som')),
     )
     return handle.asElement()
   }

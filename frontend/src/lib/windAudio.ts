@@ -1,27 +1,29 @@
 /**
  * Vento procedural do deserto via WebAudio — nenhum asset de áudio, só ruído filtrado.
  *
- * Grafo: um buffer de ruído branco em loop alimenta duas camadas:
+ * Grafo: um buffer de ruído branco em loop alimenta três camadas:
  *  - rumor grave (lowpass ~260Hz) constante, o "peso" do deserto;
  *  - assobio (bandpass ~700Hz) cujo volume e frequência oscilam com dois LFOs
  *    em frequências desalinhadas (0.05Hz e 0.17Hz) → rajadas orgânicas sem
- *    período perceptível.
+ *    período perceptível;
+ *  - rugido de tempestade (bandpass ~420Hz), mudo por padrão — a SandStorm
+ *    escreve a intensidade a cada frame via setWindStormLevel.
  *
- * O AudioContext só é criado no primeiro toggle (gesto do usuário) — política
- * de autoplay dos navegadores bloqueia áudio sem interação.
+ * O AudioContext (compartilhado com as armas) só é criado no primeiro toggle
+ * (gesto do usuário) — política de autoplay dos navegadores bloqueia áudio
+ * sem interação.
  */
+import { createNoiseBuffer, getAudioContext } from './audioContext'
 
-let ctx: AudioContext | null = null
 let master: GainNode | null = null
+let stormGain: GainNode | null = null
+// Espelho do último setWindStormLevel: o grafo só nasce no 1º toggle de som,
+// e se a tempestade já estiver rugindo nesse momento o buildGraph precisa
+// partir do nível atual — sem isso ela ficaria muda até o próximo frame.
+let stormLevel = 0
 
 const MASTER_VOLUME = 0.35
-
-function makeNoiseBuffer(ctx: AudioContext): AudioBuffer {
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate)
-  const data = buffer.getChannelData(0)
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
-  return buffer
-}
+const STORM_VOLUME = 0.85
 
 function buildGraph(ctx: AudioContext): GainNode {
   const master = ctx.createGain()
@@ -29,7 +31,7 @@ function buildGraph(ctx: AudioContext): GainNode {
   master.connect(ctx.destination)
 
   const noise = ctx.createBufferSource()
-  noise.buffer = makeNoiseBuffer(ctx)
+  noise.buffer = createNoiseBuffer(ctx, 4)
   noise.loop = true
 
   // camada grave: rumor constante
@@ -67,6 +69,18 @@ function buildGraph(ctx: AudioContext): GainNode {
   lfoFast.connect(gainDepth)
   gainDepth.connect(whistleGain.gain)
 
+  // camada de tempestade: rugido médio que sobe com a intensidade visual.
+  // Pendura no master de propósito — usuário mudo = tempestade muda também.
+  const storm = ctx.createBiquadFilter()
+  storm.type = 'bandpass'
+  storm.frequency.value = 420
+  storm.Q.value = 0.7
+  stormGain = ctx.createGain()
+  stormGain.gain.value = stormLevel * STORM_VOLUME
+  noise.connect(storm)
+  storm.connect(stormGain)
+  stormGain.connect(master)
+
   noise.start()
   lfoSlow.start()
   lfoFast.start()
@@ -75,13 +89,19 @@ function buildGraph(ctx: AudioContext): GainNode {
 
 /** Liga/desliga o vento com fade de ~1s. Cria o grafo na primeira ligada. */
 export function setWindEnabled(enabled: boolean) {
-  if (!ctx) {
+  if (!master) {
     if (!enabled) return
-    ctx = new AudioContext()
-    master = buildGraph(ctx)
+    master = buildGraph(getAudioContext())
   }
-  if (ctx.state === 'suspended') void ctx.resume()
-  const gain = master!.gain
+  const ctx = getAudioContext()
+  const gain = master.gain
   gain.cancelScheduledValues(ctx.currentTime)
   gain.setTargetAtTime(enabled ? MASTER_VOLUME : 0, ctx.currentTime, 0.4)
+}
+
+/** Intensidade da tempestade [0..1] — chamada por frame pela SandStorm,
+ *  por isso escreve o gain direto (sem agendar automation a 60fps). */
+export function setWindStormLevel(level: number) {
+  stormLevel = level
+  if (stormGain) stormGain.gain.value = level * STORM_VOLUME
 }

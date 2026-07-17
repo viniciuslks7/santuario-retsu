@@ -4,17 +4,22 @@ import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
 import { Landmarks } from './Landmarks'
+import { SandStorm } from './SandStorm'
 import { Shrine } from './Shrine'
+import { FOG_FAR, FOG_NEAR } from '../../lib/storm'
 
 export function Experience() {
   return (
     <>
-      <fog attach="fog" args={['#c97f52', 40, 200]} />
+      <fog attach="fog" args={['#c97f52', FOG_NEAR, FOG_FAR]} />
 
       <CameraRig />
       <DesertEnvironment />
       <Landmarks />
       <DustParticles />
+      {/* montada depois do DesertEnvironment: o useFrame dela roda depois e
+          fecha o fog por cima da cor do ciclo dia/noite */}
+      <SandStorm />
       <Shrine />
 
       <OrbitControls

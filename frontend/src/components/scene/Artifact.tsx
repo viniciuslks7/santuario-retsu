@@ -6,6 +6,7 @@ import { useInspectSpin } from './useInspectSpin'
 import { useIdleAnimation, useWeaponModel } from './useWeaponModel'
 import { ArtifactAura } from './ArtifactAura'
 import type { ArtifactSeed } from '../../lib/artifacts'
+import { playWeaponChime, playWeaponDraw } from '../../lib/weaponAudio'
 import { useShrineStore } from '../../store/useShrineStore'
 
 interface ArtifactProps {
@@ -45,10 +46,13 @@ export function Artifact({ seed, position }: ArtifactProps) {
       position={position}
       onClick={(e) => {
         e.stopPropagation()
+        playWeaponDraw(seed.order)
         select(seed.id)
       }}
       onPointerOver={(e) => {
         e.stopPropagation()
+        // só na entrada real: atravessar os meshes do pedestal re-dispara o evento
+        if (!hovered) playWeaponChime(seed.order)
         setHovered(seed.id)
       }}
       onPointerOut={() => setHovered(null)}
