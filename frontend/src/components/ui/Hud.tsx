@@ -1,9 +1,18 @@
+import { useState } from 'react'
 import { useShrineStore } from '../../store/useShrineStore'
+import { setWindEnabled } from '../../lib/windAudio'
 
 /** Moldura 2D da visão geral: título e dica de navegação. Some na inspeção. */
 export function Hud() {
   const inspecting = useShrineStore((s) => s.currentView === 'inspecting')
   const fade = inspecting ? 'pointer-events-none opacity-0' : 'opacity-100'
+  // começa mudo: autoplay exige gesto do usuário; o AudioContext nasce no 1º clique
+  const [soundOn, setSoundOn] = useState(false)
+
+  const toggleSound = () => {
+    setSoundOn(!soundOn)
+    setWindEnabled(!soundOn)
+  }
 
   return (
     <>
@@ -21,6 +30,14 @@ export function Hud() {
           Nove lâminas do juramento. Uma décima que o deserto pariu.
         </p>
       </header>
+
+      {/* Toggle do vento — sempre visível, mesmo na inspeção (o som continua tocando) */}
+      <button
+        onClick={toggleSound}
+        className="fixed top-0 right-0 z-10 m-8 cursor-pointer border border-white/20 px-4 py-2 text-xs tracking-[0.25em] text-amber-100/70 uppercase transition hover:bg-white/10"
+      >
+        {soundOn ? 'vento: ligado' : 'vento: mudo'}
+      </button>
 
       <footer
         className={`pointer-events-none fixed bottom-0 left-1/2 z-10 -translate-x-1/2 p-6 transition-all duration-700 ${fade}`}
