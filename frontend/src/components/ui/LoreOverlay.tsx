@@ -116,6 +116,9 @@ export function LoreOverlay() {
   const selected = useShrineStore((s) => s.selectedSibling)
   const isAnimating = useShrineStore((s) => s.isAnimating)
   const clearSelection = useShrineStore((s) => s.clearSelection)
+  // recompensa da tempestade: a Sem-Nome desperta ganha um adendo que a
+  // Biblioteca do Fim nunca escreveu
+  const awakened = useShrineStore((s) => s.stormPhase === 'done')
   const [lore, setLore] = useState<SiblingLore | null>(null)
   const [errorKind, setErrorKind] = useState<LoreErrorKind | null>(null)
 
@@ -211,6 +214,19 @@ export function LoreOverlay() {
               <p key={paragraph.slice(0, 24)}>{paragraph}</p>
             ))}
           </section>
+
+          {lore.id === 'chosen' && awakened && (
+            <section className="mt-6 border-l-2 border-stone-200/70 bg-stone-200/5 p-4">
+              <p className="text-[10px] tracking-[0.35em] text-stone-400 uppercase">
+                adendo — depois da tempestade
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-stone-200">
+                O juramento das nove lâminas foi cumprido, e o deserto disse o nome que a
+                Biblioteca se recusa a escrever. A espada denteada não dorme mais: ela
+                reconhece quem a encontrou — e aguarda o décimo capítulo.
+              </p>
+            </section>
+          )}
 
           {lore.ultimate && (
             <section

@@ -164,12 +164,22 @@ function ChosenBlade() {
 
       {hovered && (
         <Html center position-y={3.4} className="pointer-events-none select-none">
-          <div className="border border-stone-400/60 bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm">
-            <p className="text-[10px] tracking-[0.35em] text-stone-400 uppercase">
-              sem registro na biblioteca
-            </p>
-            <p className="font-display text-sm text-stone-100">???</p>
-          </div>
+          {/* recompensa da tempestade: desperta, a lâmina finalmente se apresenta */}
+          {awakened ? (
+            <div className="border border-amber-200/60 bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm">
+              <p className="text-[10px] tracking-[0.35em] text-amber-200/70 uppercase">
+                a décima lâmina
+              </p>
+              <p className="font-display text-sm text-stone-50">A Sem-Nome</p>
+            </div>
+          ) : (
+            <div className="border border-stone-400/60 bg-stone-950/80 px-3 py-1.5 text-center whitespace-nowrap backdrop-blur-sm">
+              <p className="text-[10px] tracking-[0.35em] text-stone-400 uppercase">
+                sem registro na biblioteca
+              </p>
+              <p className="font-display text-sm text-stone-100">???</p>
+            </div>
+          )}
         </Html>
       )}
     </group>

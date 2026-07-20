@@ -25,6 +25,9 @@ export function CameraRig() {
   // Handle de inspeção pra testes automatizados (só em dev)
   useEffect(() => {
     if (!import.meta.env.DEV) return
+    // acesso direto ao store: os checks visuais simulam estados que exigiriam
+    // inspecionar as nove lâminas (ex.: stormPhase 'done' pra Sem-Nome desperta)
+    ;(window as unknown as Record<string, unknown>).__shrineStore = useShrineStore
     ;(window as unknown as Record<string, unknown>).__shrineDebug = () => ({
       selected: useShrineStore.getState().selectedSibling,
       isAnimating: useShrineStore.getState().isAnimating,

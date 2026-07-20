@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { stormIntensity } from '../../lib/storm'
+import { GUST_MAX, gustStrength, stormIntensity } from '../../lib/storm'
+import { setWindGustLevel } from '../../lib/windAudio'
 
 const BOUNDS = 70
 
@@ -62,12 +63,12 @@ export function DustParticles({ count = 350 }: { count?: number }) {
     if (!mesh) return
     const t = clock.elapsedTime
     const storm = stormIntensity.value
-    // O vento respira: duas senoides dessincronizadas viram rajadas e calmarias
-    const gust = 0.55 + 0.45 * Math.sin(t * 0.22) + 0.25 * Math.sin(t * 0.53 + 1.7)
-    // um clamp só: velocidade da poeira e esticamento visual derivam da mesma força
-    const gustStrength = THREE.MathUtils.clamp(gust, 0.15, 1.25)
-    const gustNorm = gustStrength / 1.25
-    windTimeRef.current += delta * gustStrength * (1 + storm * 3.5)
+    // O vento respira (fonte única em lib/storm.ts): velocidade da poeira,
+    // esticamento visual e assobio do áudio derivam da mesma força
+    const gust = gustStrength(t)
+    const gustNorm = gust / GUST_MAX
+    setWindGustLevel(gustNorm)
+    windTimeRef.current += delta * gust * (1 + storm * 3.5)
     const wt = windTimeRef.current
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i]

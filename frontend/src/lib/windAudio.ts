@@ -3,9 +3,9 @@
  *
  * Grafo: um buffer de ruído branco em loop alimenta três camadas:
  *  - rumor grave (lowpass ~260Hz) constante, o "peso" do deserto;
- *  - assobio (bandpass ~700Hz) cujo volume e frequência oscilam com dois LFOs
- *    em frequências desalinhadas (0.05Hz e 0.17Hz) → rajadas orgânicas sem
- *    período perceptível;
+ *  - assobio (bandpass) cujo volume e frequência seguem a rajada VISUAL —
+ *    a DustParticles escreve a força por frame via setWindGustLevel, então
+ *    o vento que estica os grãos é o mesmo que assobia;
  *  - rugido de tempestade (bandpass ~420Hz), mudo por padrão — a SandStorm
  *    escreve a intensidade a cada frame via setWindStormLevel.
  *
@@ -17,13 +17,22 @@ import { createNoiseBuffer, getAudioContext } from './audioContext'
 
 let master: GainNode | null = null
 let stormGain: GainNode | null = null
-// Espelho do último setWindStormLevel: o grafo só nasce no 1º toggle de som,
-// e se a tempestade já estiver rugindo nesse momento o buildGraph precisa
-// partir do nível atual — sem isso ela ficaria muda até o próximo frame.
+let whistleFilter: BiquadFilterNode | null = null
+let whistleGain: GainNode | null = null
+// Espelhos dos últimos setWindStormLevel/setWindGustLevel: o grafo só nasce no
+// 1º toggle de som, e se a tempestade já estiver rugindo (ou a rajada soprando)
+// nesse momento o buildGraph precisa partir do nível atual — sem isso ficariam
+// mudos até o próximo frame.
 let stormLevel = 0
+let gustLevel = 0
 
 const MASTER_VOLUME = 0.35
 const STORM_VOLUME = 0.85
+// faixa do assobio: rajada 0 → sussurro grave, rajada 1 → assobio alto e agudo
+const WHISTLE_GAIN_MIN = 0.04
+const WHISTLE_GAIN_SPAN = 0.12
+const WHISTLE_FREQ_MIN = 550
+const WHISTLE_FREQ_SPAN = 320
 
 function buildGraph(ctx: AudioContext): GainNode {
   const master = ctx.createGain()
@@ -44,30 +53,16 @@ function buildGraph(ctx: AudioContext): GainNode {
   rumble.connect(rumbleGain)
   rumbleGain.connect(master)
 
-  // camada aguda: assobio que as rajadas empurram pra cima e pra baixo
-  const whistle = ctx.createBiquadFilter()
-  whistle.type = 'bandpass'
-  whistle.frequency.value = 700
-  whistle.Q.value = 1.4
-  const whistleGain = ctx.createGain()
-  whistleGain.gain.value = 0.1
-  noise.connect(whistle)
-  whistle.connect(whistleGain)
+  // camada aguda: assobio que as rajadas visuais empurram pra cima e pra baixo
+  // (setWindGustLevel aplica o nível atual logo abaixo)
+  whistleFilter = ctx.createBiquadFilter()
+  whistleFilter.type = 'bandpass'
+  whistleFilter.Q.value = 1.4
+  whistleGain = ctx.createGain()
+  noise.connect(whistleFilter)
+  whistleFilter.connect(whistleGain)
   whistleGain.connect(master)
-
-  const lfoSlow = ctx.createOscillator()
-  lfoSlow.frequency.value = 0.05
-  const freqDepth = ctx.createGain()
-  freqDepth.gain.value = 320
-  lfoSlow.connect(freqDepth)
-  freqDepth.connect(whistle.frequency)
-
-  const lfoFast = ctx.createOscillator()
-  lfoFast.frequency.value = 0.17
-  const gainDepth = ctx.createGain()
-  gainDepth.gain.value = 0.06
-  lfoFast.connect(gainDepth)
-  gainDepth.connect(whistleGain.gain)
+  setWindGustLevel(gustLevel)
 
   // camada de tempestade: rugido médio que sobe com a intensidade visual.
   // Pendura no master de propósito — usuário mudo = tempestade muda também.
@@ -82,8 +77,6 @@ function buildGraph(ctx: AudioContext): GainNode {
   stormGain.connect(master)
 
   noise.start()
-  lfoSlow.start()
-  lfoFast.start()
   return master
 }
 
@@ -104,4 +97,12 @@ export function setWindEnabled(enabled: boolean) {
 export function setWindStormLevel(level: number) {
   stormLevel = level
   if (stormGain) stormGain.gain.value = level * STORM_VOLUME
+}
+
+/** Rajada calma [0..1] — chamada por frame pela DustParticles com a mesma
+ *  força que estica os grãos: volume e tom do assobio seguem o visual. */
+export function setWindGustLevel(level: number) {
+  gustLevel = level
+  if (whistleGain) whistleGain.gain.value = WHISTLE_GAIN_MIN + level * WHISTLE_GAIN_SPAN
+  if (whistleFilter) whistleFilter.frequency.value = WHISTLE_FREQ_MIN + level * WHISTLE_FREQ_SPAN
 }

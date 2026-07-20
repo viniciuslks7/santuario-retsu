@@ -45,9 +45,10 @@ const PALETTE = {
   fogSunset: new THREE.Color('#c97f52'),
   fogDay: new THREE.Color('#d9b08c'),
   fogNight: new THREE.Color('#141824'),
-  // cores HDR (>1) pros discos estourarem no Bloom
+  // cores HDR (>1) pros discos estourarem no Bloom — o diurno mais contido:
+  // com o sol a pino o Bloom forte lavava o terço superior da tela de branco
   discWarm: new THREE.Color(3.2, 2.2, 1.2),
-  discDay: new THREE.Color(4.0, 3.6, 3.0),
+  discDay: new THREE.Color(2.4, 2.3, 2.1),
 }
 
 function useDuneGeometry() {
@@ -97,7 +98,15 @@ export function DesertEnvironment() {
     const gold = 1 - THREE.MathUtils.smoothstep(y, 0.08, 0.5) // 1 hora dourada
 
     if (skyRef.current) {
-      skyRef.current.material.uniforms.sunPosition.value.copy(sunDir).multiplyScalar(180)
+      const uniforms = skyRef.current.material.uniforms
+      uniforms.sunPosition.value.copy(sunDir).multiplyScalar(180)
+      // O céu é tunado pro poente (turbidity 9 / rayleigh 5) — com o sol alto
+      // esses valores viram leite. Rumo ao meio-dia o ar limpa e azula; na hora
+      // dourada e à noite `noon` volta a 0 e a identidade da cena permanece.
+      const noon = day * (1 - gold)
+      uniforms.turbidity.value = THREE.MathUtils.lerp(9, 3.5, noon)
+      uniforms.rayleigh.value = THREE.MathUtils.lerp(5, 1.4, noon)
+      uniforms.mieCoefficient.value = THREE.MathUtils.lerp(0.02, 0.006, noon)
     }
 
     const sun = sunLightRef.current
