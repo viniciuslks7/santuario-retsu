@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { GUST_MAX, gustStrength, stormIntensity } from '../../lib/storm'
+import { getPuffTexture } from '../../lib/particleTextures'
 import { setWindGustLevel } from '../../lib/windAudio'
 
 const BOUNDS = 70
@@ -58,10 +59,13 @@ export function DustParticles({ count = 350 }: { count?: number }) {
     mesh.instanceColor!.needsUpdate = true
   }, [seeds])
 
-  useFrame(({ clock }, delta) => {
+  useFrame(({ clock, camera }, delta) => {
     const mesh = meshRef.current
     if (!mesh) return
     const t = clock.elapsedTime
+    // billboard: o puff sempre encara a câmera; o stretch em X (abaixo) vira
+    // risco na direção horizontal da tela — leitura de vento sem geometria 3D
+    dummy.quaternion.copy(camera.quaternion)
     const storm = stormIntensity.value
     // O vento respira (fonte única em lib/storm.ts): velocidade da poeira,
     // esticamento visual e assobio do áudio derivam da mesma força
@@ -88,8 +92,16 @@ export function DustParticles({ count = 350 }: { count?: number }) {
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
-      <sphereGeometry args={[1, 6, 6]} />
-      <meshBasicMaterial ref={matRef} color="#ffffff" transparent opacity={0.4} depthWrite={false} />
+      {/* plano 3x3 compensa o falloff suave da textura (núcleo visível ~1/3) */}
+      <planeGeometry args={[3, 3]} />
+      <meshBasicMaterial
+        ref={matRef}
+        map={getPuffTexture()}
+        color="#ffffff"
+        transparent
+        opacity={0.4}
+        depthWrite={false}
+      />
     </instancedMesh>
   )
 }

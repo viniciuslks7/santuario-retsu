@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Environment, Lightformer, Sky, Stars } from '@react-three/drei'
 import type { Sky as SkyImpl } from 'three-stdlib'
 import { duneHeight } from '../../lib/dunes'
+import { emitSandBurst } from '../../lib/sandBurst'
 import { useShrineStore } from '../../store/useShrineStore'
 
 // ── Ciclo dia/noite ──────────────────────────────────────────────────────────
@@ -219,13 +220,17 @@ export function DesertEnvironment() {
         <Lightformer form="rect" intensity={0.5} color="#7a8aa0" position={[7, 2, 6]} rotation-y={-Math.PI / 3} scale={[8, 4, 1]} />
       </Environment>
 
-      {/* Clique raso na areia (sem arrasto de órbita) volta pra visão geral */}
+      {/* Clique raso na areia (sem arrasto de órbita) volta pra visão geral
+          e levanta um jato de poeira no ponto tocado */}
       <mesh
         geometry={dunes}
         rotation-x={-Math.PI / 2}
         receiveShadow
         onClick={(e) => {
-          if (e.delta < 4) useShrineStore.getState().clearSelection()
+          if (e.delta < 4) {
+            useShrineStore.getState().clearSelection()
+            emitSandBurst(e.point)
+          }
         }}
       >
         <meshStandardMaterial color="#c2884e" roughness={1} metalness={0} />

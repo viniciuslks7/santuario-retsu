@@ -5,6 +5,7 @@ import { Hud } from './components/ui/Hud'
 import { LoreOverlay } from './components/ui/LoreOverlay'
 import { ClanOverlay } from './components/ui/ClanOverlay'
 import { fetchSiblingIndex } from './lib/api'
+import { startTheme, stopTheme } from './lib/themeMusic'
 import { useShrineStore } from './store/useShrineStore'
 
 function App() {
@@ -13,6 +14,19 @@ function App() {
     fetchSiblingIndex()
       .then((siblings) => useShrineStore.getState().setSiblingIndex(siblings))
       .catch((err) => console.warn('Índice de lore indisponível:', err))
+  }, [])
+
+  // Tema musical do irmão inspecionado: entra ao selecionar, some ao sair
+  useEffect(() => {
+    const unsub = useShrineStore.subscribe((state, prev) => {
+      if (state.selectedSibling === prev.selectedSibling) return
+      if (state.selectedSibling) startTheme(state.selectedSibling)
+      else stopTheme()
+    })
+    return () => {
+      unsub()
+      stopTheme()
+    }
   }, [])
 
   return (

@@ -4,6 +4,7 @@ import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
 import { Landmarks } from './Landmarks'
+import { SandBursts } from './SandBursts'
 import { SandStorm } from './SandStorm'
 import { Shrine } from './Shrine'
 import { FOG_FAR, FOG_NEAR } from '../../lib/storm'
@@ -20,6 +21,7 @@ export function Experience() {
       {/* montada depois do DesertEnvironment: o useFrame dela roda depois e
           fecha o fog por cima da cor do ciclo dia/noite */}
       <SandStorm />
+      <SandBursts />
       <Shrine />
 
       <OrbitControls

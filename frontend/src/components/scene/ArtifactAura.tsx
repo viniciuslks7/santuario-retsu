@@ -2,6 +2,12 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useShrineStore } from '../../store/useShrineStore'
+import {
+  getAshTexture,
+  getDropTexture,
+  getGlowTexture,
+  getSparkTexture,
+} from '../../lib/particleTextures'
 
 // Aura elemental de cada artefato — partículas guiadas pelo lore do irmão.
 // Mesma receita instanciada da DustParticles: um único instancedMesh por aura,
@@ -60,12 +66,34 @@ function sparkHash(jump: number, phase: number, n: number) {
   return Math.sin(jump * 12.9898 + phase * 78.233 + n * 37.719)
 }
 
+/** Textura casada com o elemento do modo (boxy fica sem — cascalho é 3D). */
+function auraTexture(mode: AuraMode): THREE.Texture | null {
+  switch (mode) {
+    case 'sparks':
+    case 'clock':
+      return getSparkTexture()
+    case 'ashfall':
+      return getAshTexture()
+    case 'bloodrise':
+      return getDropTexture()
+    case 'rumble':
+    case 'debris':
+      return null
+    default:
+      return getGlowTexture()
+  }
+}
+
 export function ArtifactAura({ id, color }: { id: string; color: string }) {
   const cfg = AURAS[id]
   const lit = useShrineStore((s) => s.hoveredSibling === id || s.selectedSibling === id)
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
+  // billboard com pai rotacionado (a Chosen tem rotation no grupo): compensa
+  // a rotação de mundo do mesh antes de aplicar a orientação da câmera
+  const worldQuat = useMemo(() => new THREE.Quaternion(), [])
+  const billQuat = useMemo(() => new THREE.Quaternion(), [])
   // relógio próprio: acelerar via delta evita salto de fase ao entrar/sair do hover
   const timeRef = useRef(0)
   const boostRef = useRef(0)
@@ -83,12 +111,16 @@ export function ArtifactAura({ id, color }: { id: string; color: string }) {
     [cfg.count],
   )
 
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     const mesh = meshRef.current
     if (!mesh) return
     boostRef.current = THREE.MathUtils.damp(boostRef.current, lit ? 1 : 0, 4, delta)
     timeRef.current += delta * (1 + boostRef.current * 1.4)
     const t = timeRef.current
+    if (!cfg.boxy) {
+      mesh.getWorldQuaternion(worldQuat)
+      billQuat.copy(worldQuat).invert().multiply(camera.quaternion)
+    }
 
     for (let i = 0; i < seeds.length; i++) {
       const s = seeds[i]
@@ -166,6 +198,8 @@ export function ArtifactAura({ id, color }: { id: string; color: string }) {
         }
       }
 
+      // sprites encaram a câmera; cascalho/escombros (boxy) mantêm a rotação 3D
+      if (!cfg.boxy) dummy.quaternion.copy(billQuat)
       dummy.scale.setScalar(cfg.size * s.scale * flicker)
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)
@@ -184,9 +218,11 @@ export function ArtifactAura({ id, color }: { id: string; color: string }) {
       frustumCulled={false}
       raycast={() => null}
     >
-      {cfg.boxy ? <boxGeometry args={[1, 1, 1]} /> : <sphereGeometry args={[1, 6, 6]} />}
+      {/* plano 2x2 = mesmo diâmetro da esfera antiga; setScalar continua valendo */}
+      {cfg.boxy ? <boxGeometry args={[1, 1, 1]} /> : <planeGeometry args={[2, 2]} />}
       <meshBasicMaterial
         ref={matRef}
+        map={auraTexture(cfg.mode)}
         color={cfg.tint ?? color}
         transparent
         opacity={cfg.opacity * 0.75}

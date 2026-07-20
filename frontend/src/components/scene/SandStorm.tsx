@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { useShrineStore } from '../../store/useShrineStore'
 import { setWindStormLevel } from '../../lib/windAudio'
 import { FOG_FAR, FOG_NEAR, stormIntensity } from '../../lib/storm'
+import { getPuffTexture, getStreakTexture } from '../../lib/particleTextures'
 
 // A tempestade do juramento: quando as nove lâminas são inspecionadas, o
 // deserto se levanta por ~16s e desperta a espada da Chosen. Enquanto ruge,
@@ -13,6 +14,9 @@ import { FOG_FAR, FOG_NEAR, stormIntensity } from '../../lib/storm'
 const COUNT = 550
 const BOUNDS = 80
 const STORM_SECONDS = 16
+
+// nuvens baixas de areia rolando rente ao chão — a "parede" da tempestade
+const HAZE_COUNT = 16
 
 const FOG_STORM_NEAR = 8
 const FOG_STORM_FAR = 62
@@ -33,10 +37,22 @@ interface StreakSeed {
   scale: number
 }
 
+interface HazeSeed {
+  x: number
+  y: number
+  z: number
+  speed: number
+  phase: number
+  scale: number
+  roll: number
+}
+
 export function SandStorm() {
   const stormPhase = useShrineStore((s) => s.stormPhase)
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  const hazeRef = useRef<THREE.InstancedMesh>(null)
+  const hazeMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const windTimeRef = useRef(0)
   const ragingForRef = useRef(0)
@@ -69,6 +85,20 @@ export function SandStorm() {
     [],
   )
 
+  const hazeSeeds = useMemo<HazeSeed[]>(
+    () =>
+      Array.from({ length: HAZE_COUNT }, () => ({
+        x: THREE.MathUtils.randFloatSpread(BOUNDS * 2),
+        y: THREE.MathUtils.randFloat(0.8, 3.2),
+        z: THREE.MathUtils.randFloatSpread(BOUNDS * 2),
+        speed: THREE.MathUtils.randFloat(0.5, 1.1),
+        phase: THREE.MathUtils.randFloat(0, Math.PI * 2),
+        scale: THREE.MathUtils.randFloat(7, 15),
+        roll: THREE.MathUtils.randFloat(-0.4, 0.4),
+      })),
+    [],
+  )
+
   // cor por instância definida uma vez — variação de tom é o que tira a cara
   // de "clone" das partículas
   useLayoutEffect(() => {
@@ -79,9 +109,15 @@ export function SandStorm() {
       mesh.setColorAt(i, c.lerpColors(STREAK_DARK, STREAK_LIGHT, Math.random()))
     }
     mesh.instanceColor!.needsUpdate = true
-  }, [seeds])
+    const haze = hazeRef.current
+    if (!haze) return
+    for (let i = 0; i < hazeSeeds.length; i++) {
+      haze.setColorAt(i, c.lerpColors(STREAK_DARK, STREAK_LIGHT, Math.random()))
+    }
+    haze.instanceColor!.needsUpdate = true
+  }, [seeds, hazeSeeds])
 
-  useFrame(({ clock, scene }, delta) => {
+  useFrame(({ clock, scene, camera }, delta) => {
     const raging = forced || stormPhase === 'raging'
 
     // sobe rápido (a rajada chega), assenta devagar (a areia demora a baixar)
@@ -109,9 +145,12 @@ export function SandStorm() {
     }
 
     const mesh = meshRef.current
-    if (!mesh) return
+    const haze = hazeRef.current
+    if (!mesh || !haze) return
     mesh.visible = k > 0.015
+    haze.visible = mesh.visible
     if (matRef.current) matRef.current.opacity = 0.55 * k
+    if (hazeMatRef.current) hazeMatRef.current.opacity = 0.16 * k
     if (!mesh.visible) return
 
     // tempo de vento acumulado: a velocidade muda com k sem teleportar riscos
@@ -125,25 +164,70 @@ export function SandStorm() {
       const y = s.y + Math.sin(t * 1.8 + s.phase) * 0.5
       const z = s.z + Math.sin(t * 0.7 + s.phase) * 1.2
       dummy.position.set(x, y, z)
-      dummy.rotation.set(0, s.yaw, Math.sin(s.phase) * 0.05)
+      // billboard + leve rolagem: a textura de risco encara a câmera e o
+      // stretch em X mantém a leitura de vento
+      dummy.quaternion.copy(camera.quaternion)
+      dummy.rotateZ(s.yaw + Math.sin(s.phase) * 0.05)
       // esticado no eixo do vento: risco, não bolinha
-      dummy.scale.set(s.scale * s.length * (0.4 + k), s.scale, s.scale)
+      dummy.scale.set(s.scale * s.length * (0.4 + k), s.scale * 2.2, 1)
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)
     }
     mesh.instanceMatrix.needsUpdate = true
+
+    // nuvens baixas: rolam mais devagar que os riscos e "fervem" de leve
+    for (let i = 0; i < hazeSeeds.length; i++) {
+      const s = hazeSeeds[i]
+      const x = ((s.x + wt * s.speed * 0.35 + BOUNDS) % (BOUNDS * 2)) - BOUNDS
+      const y = s.y + Math.sin(t * 0.5 + s.phase) * 0.4
+      const z = s.z + Math.sin(t * 0.3 + s.phase) * 1.5
+      dummy.position.set(x, y, z)
+      dummy.quaternion.copy(camera.quaternion)
+      dummy.rotateZ(s.roll + t * 0.03 * (i % 2 === 0 ? 1 : -1))
+      const puffScale = s.scale * (0.85 + Math.sin(t * 0.4 + s.phase) * 0.15)
+      dummy.scale.set(puffScale * 1.6, puffScale, 1)
+      dummy.updateMatrix()
+      haze.setMatrixAt(i, dummy.matrix)
+    }
+    haze.instanceMatrix.needsUpdate = true
   })
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[undefined, undefined, COUNT]}
-      frustumCulled={false}
-      visible={false}
-      raycast={() => null}
-    >
-      <sphereGeometry args={[1, 6, 6]} />
-      <meshBasicMaterial ref={matRef} color="#ffffff" transparent opacity={0} depthWrite={false} />
-    </instancedMesh>
+    <>
+      <instancedMesh
+        ref={meshRef}
+        args={[undefined, undefined, COUNT]}
+        frustumCulled={false}
+        visible={false}
+        raycast={() => null}
+      >
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          ref={matRef}
+          map={getStreakTexture()}
+          color="#ffffff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </instancedMesh>
+      <instancedMesh
+        ref={hazeRef}
+        args={[undefined, undefined, HAZE_COUNT]}
+        frustumCulled={false}
+        visible={false}
+        raycast={() => null}
+      >
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          ref={hazeMatRef}
+          map={getPuffTexture()}
+          color="#ffffff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </instancedMesh>
+    </>
   )
 }
