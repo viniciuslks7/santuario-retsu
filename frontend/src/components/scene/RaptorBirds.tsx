@@ -22,6 +22,7 @@ interface RaptorSeed {
   /** rad/s — sinal define sentido do círculo (horário/anti-horário) */
   angularSpeed: number
   phase: number
+  /** rad/s do bobbing vertical (amplitude fixa em 0.6, ver useFrame) */
   bob: number
 }
 
@@ -38,7 +39,7 @@ function Raptor({
 }: {
   seed: RaptorSeed
   geometry: THREE.BufferGeometry
-  fleeStartRef: React.MutableRefObject<number | null>
+  fleeStartRef: React.RefObject<number | null>
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const target = useMemo(() => new THREE.Vector3(), [])
@@ -74,8 +75,8 @@ function Raptor({
     const dirSign = Math.sign(seed.angularSpeed) || 1
     target.set(x - Math.sin(angle) * dirSign, height, z + Math.cos(angle) * dirSign)
     mesh.lookAt(target)
-    // banking: inclina na curva (raio constante = curvatura constante, então
-    // um ângulo fixo já lê bem — sem precisar variar por frame)
+    // banking: inclina na curva (curvatura ~constante enquanto circula calma;
+    // na fuga o raio cresce mas o ângulo fixo ainda lê bem — sem precisar variar por frame)
     mesh.rotateZ(-dirSign * BANK_AMOUNT)
   })
 
