@@ -15,15 +15,15 @@ export function createRaptorGeometry(): THREE.BufferGeometry {
 
   const triangles = [
     // metade de cima (bico → asa dir. → rabo → asa esq. → bico, ligando ao ápice de cima)
-    nose, rightTip, top,
-    rightTip, tail, top,
-    tail, leftTip, top,
-    leftTip, nose, top,
+    nose, top, rightTip,
+    rightTip, top, tail,
+    tail, top, leftTip,
+    leftTip, top, nose,
     // metade de baixo (mesmo perímetro, ligando ao ápice de baixo)
-    rightTip, nose, bottom,
-    tail, rightTip, bottom,
-    leftTip, tail, bottom,
-    nose, leftTip, bottom,
+    rightTip, bottom, nose,
+    tail, bottom, rightTip,
+    leftTip, bottom, tail,
+    nose, bottom, leftTip,
   ]
 
   const positions = new Float32Array(triangles.flat())
