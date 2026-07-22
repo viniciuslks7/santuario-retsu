@@ -26,9 +26,9 @@ interface RaptorSeed {
 }
 
 const SEEDS: RaptorSeed[] = [
-  { radius: 10, height: 15, angularSpeed: 0.22, phase: 0, bob: 0.6 },
-  { radius: 13, height: 12.5, angularSpeed: -0.16, phase: 2.4, bob: 0.9 },
-  { radius: 8.5, height: 17, angularSpeed: 0.28, phase: 4.6, bob: 0.4 },
+  { radius: 10, height: 11, angularSpeed: 0.22, phase: 0, bob: 0.6 },
+  { radius: 13, height: 9.5, angularSpeed: -0.16, phase: 2.4, bob: 0.9 },
+  { radius: 8.5, height: 12, angularSpeed: 0.28, phase: 4.6, bob: 0.4 },
 ]
 
 function Raptor({

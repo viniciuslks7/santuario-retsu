@@ -4,6 +4,7 @@ import { CameraRig } from './CameraRig'
 import { DesertEnvironment } from './DesertEnvironment'
 import { DustParticles } from './DustParticles'
 import { Landmarks } from './Landmarks'
+import { RaptorBirds } from './RaptorBirds'
 import { SandBursts } from './SandBursts'
 import { SandStorm } from './SandStorm'
 import { Shrine } from './Shrine'
@@ -23,6 +24,7 @@ export function Experience() {
       <SandStorm />
       <SandBursts />
       <Shrine />
+      <RaptorBirds />
 
       <OrbitControls
         makeDefault
