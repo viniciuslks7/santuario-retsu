@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
   getAshTexture,
@@ -85,6 +86,7 @@ function auraTexture(mode: AuraMode): THREE.Texture | null {
 }
 
 export function ArtifactAura({ id, color }: { id: string; color: string }) {
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
   const cfg = AURAS[id]
   const lit = useShrineStore((s) => s.hoveredSibling === id || s.selectedSibling === id)
   const meshRef = useRef<THREE.InstancedMesh>(null)
@@ -115,7 +117,7 @@ export function ArtifactAura({ id, color }: { id: string; color: string }) {
     const mesh = meshRef.current
     if (!mesh) return
     boostRef.current = THREE.MathUtils.damp(boostRef.current, lit ? 1 : 0, 4, delta)
-    timeRef.current += delta * (1 + boostRef.current * 1.4)
+    if (!reducedMotion) timeRef.current += delta * (1 + boostRef.current * 1.4)
     const t = timeRef.current
     if (!cfg.boxy) {
       mesh.getWorldQuaternion(worldQuat)

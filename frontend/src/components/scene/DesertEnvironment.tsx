@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Environment, Lightformer, Sky, Stars } from '@react-three/drei'
@@ -6,6 +6,7 @@ import type { Sky as SkyImpl } from 'three-stdlib'
 import { duneHeight } from '../../lib/dunes'
 import { emitSandBurst } from '../../lib/sandBurst'
 import { useShrineStore } from '../../store/useShrineStore'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 
 // ── Ciclo dia/noite ──────────────────────────────────────────────────────────
 // O sol viaja num arco fixo de azimute (o mesmo do pôr do sol original) e o
@@ -37,38 +38,74 @@ const MOON_DIRECTION = new THREE.Vector3(0.55, 0.5, 0.82).normalize()
 const PALETTE = {
   sunWarm: new THREE.Color('#ff9a5a'),
   sunDay: new THREE.Color('#fff2dd'),
-  hemiSkySunset: new THREE.Color('#ffb38a'),
+  hemiSkySunset: new THREE.Color('#c8c3ae'),
   hemiSkyDay: new THREE.Color('#cfd8e8'),
   hemiSkyNight: new THREE.Color('#232c45'),
-  hemiGroundSunset: new THREE.Color('#4a3322'),
+  hemiGroundSunset: new THREE.Color('#70634f'),
   hemiGroundDay: new THREE.Color('#6a5a48'),
   hemiGroundNight: new THREE.Color('#141821'),
-  fogSunset: new THREE.Color('#c97f52'),
+  fogSunset: new THREE.Color('#bda183'),
   fogDay: new THREE.Color('#d9b08c'),
   fogNight: new THREE.Color('#141824'),
   // cores HDR (>1) pros discos estourarem no Bloom — o diurno mais contido:
   // com o sol a pino o Bloom forte lavava o terço superior da tela de branco
-  discWarm: new THREE.Color(3.2, 2.2, 1.2),
-  discDay: new THREE.Color(2.4, 2.3, 2.1),
+  discWarm: new THREE.Color(2.2, 1.6, 0.9),
+  discDay: new THREE.Color(1.7, 1.65, 1.5),
 }
 
-function useDuneGeometry() {
+function useDuneGeometry(segments: number) {
   return useMemo(() => {
-    const geo = new THREE.PlaneGeometry(320, 320, 140, 140)
+    const geo = new THREE.PlaneGeometry(320, 320, segments, segments)
     const pos = geo.attributes.position
+    const colors = new Float32Array(pos.count * 3)
+    const shade = new THREE.Color()
+    const sandLow = new THREE.Color('#aa9474')
+    const sandHigh = new THREE.Color('#d2bf96')
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
       // O plano vira o chão rodando -90° em X, então y do plano = -z do mundo
       pos.setZ(i, duneHeight(x, -y))
+      const variation = 0.5 + Math.sin(x * 0.045 + y * 0.025) * 0.22 + Math.cos(y * 0.08) * 0.12
+      shade.lerpColors(sandLow, sandHigh, variation)
+      shade.toArray(colors, i * 3)
     }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geo.computeVertexNormals()
     return geo
-  }, [])
+  }, [segments])
 }
 
 export function DesertEnvironment() {
-  const dunes = useDuneGeometry()
+  const quality = useExperienceSettings((s) => s.quality)
+  const timeOfDay = useExperienceSettings((s) => s.timeOfDay)
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  const cinematic = quality === 'cinematic'
+  const dunes = useDuneGeometry(cinematic ? 140 : 88)
+  const sandTexture = useMemo(() => {
+    const size = 128
+    const data = new Uint8Array(size * size * 4)
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const ripple = Math.sin((x / size) * Math.PI * 16 + Math.sin((y / size) * Math.PI * 2) * 1.4)
+        const grain = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+        const value = Math.round(128 + ripple * 36 + (grain - Math.floor(grain) - 0.5) * 24)
+        const offset = (y * size + x) * 4
+        data[offset] = data[offset + 1] = data[offset + 2] = value
+        data[offset + 3] = 255
+      }
+    }
+    const texture = new THREE.DataTexture(data, size, size)
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(45, 45)
+    texture.magFilter = THREE.LinearFilter
+    texture.minFilter = THREE.LinearMipmapLinearFilter
+    texture.generateMipmaps = true
+    texture.needsUpdate = true
+    return texture
+  }, [])
+  useEffect(() => () => dunes.dispose(), [dunes])
+  useEffect(() => () => sandTexture.dispose(), [sandTexture])
 
   const skyRef = useRef<SkyImpl>(null)
   const sunLightRef = useRef<THREE.DirectionalLight>(null)
@@ -91,7 +128,8 @@ export function DesertEnvironment() {
   }, [])
 
   useFrame(({ clock, scene }) => {
-    const frac = todOverride ?? (clock.elapsedTime / DAY_LENGTH) % 1
+    const selectedTime = timeOfDay === 'night' ? 0.25 : timeOfDay === 'day' ? 0.75 : 0
+    const frac = todOverride ?? (timeOfDay === 'cycle' && !reducedMotion ? (clock.elapsedTime / DAY_LENGTH) % 1 : selectedTime)
     sunDirectionAt(frac, sunDir)
     const y = sunDir.y
     const day = THREE.MathUtils.smoothstep(y, -0.04, 0.25) // 0 noite → 1 dia
@@ -105,15 +143,15 @@ export function DesertEnvironment() {
       // esses valores viram leite. Rumo ao meio-dia o ar limpa e azula; na hora
       // dourada e à noite `noon` volta a 0 e a identidade da cena permanece.
       const noon = day * (1 - gold)
-      uniforms.turbidity.value = THREE.MathUtils.lerp(9, 3.5, noon)
-      uniforms.rayleigh.value = THREE.MathUtils.lerp(5, 1.4, noon)
-      uniforms.mieCoefficient.value = THREE.MathUtils.lerp(0.02, 0.006, noon)
+      uniforms.turbidity.value = THREE.MathUtils.lerp(5.8, 3.5, noon)
+      uniforms.rayleigh.value = THREE.MathUtils.lerp(2.6, 1.4, noon)
+      uniforms.mieCoefficient.value = THREE.MathUtils.lerp(0.012, 0.006, noon)
     }
 
     const sun = sunLightRef.current
     if (sun) {
       sun.position.copy(sunDir).multiplyScalar(70)
-      sun.intensity = 2.4 * day
+      sun.intensity = 2.6 * day
       sun.color.lerpColors(PALETTE.sunWarm, PALETTE.sunDay, 1 - gold)
     }
     if (moonLightRef.current) moonLightRef.current.intensity = 0.5 * night
@@ -124,9 +162,9 @@ export function DesertEnvironment() {
       hemi.color.lerp(PALETTE.hemiSkyNight, night)
       hemi.groundColor.lerpColors(PALETTE.hemiGroundSunset, PALETTE.hemiGroundDay, 1 - gold)
       hemi.groundColor.lerp(PALETTE.hemiGroundNight, night)
-      hemi.intensity = THREE.MathUtils.lerp(0.55 + 0.2 * (1 - gold), 0.2, night)
+      hemi.intensity = THREE.MathUtils.lerp(0.72 + 0.12 * (1 - gold), 0.3, night)
     }
-    if (ambientRef.current) ambientRef.current.intensity = 0.12 - 0.07 * night
+    if (ambientRef.current) ambientRef.current.intensity = 0.22 - 0.09 * night
 
     if (scene.fog instanceof THREE.Fog) {
       fogScratch.lerpColors(PALETTE.fogSunset, PALETTE.fogDay, 1 - gold)
@@ -168,7 +206,7 @@ export function DesertEnvironment() {
 
       {/* Estrelas só visíveis com o sol bem abaixo do horizonte */}
       <group ref={starsRef} visible={false}>
-        <Stars radius={280} depth={60} count={2500} factor={5} saturation={0} fade speed={0.6} />
+        <Stars radius={280} depth={60} count={cinematic ? 1800 : 650} factor={3.5} saturation={0} fade speed={reducedMotion ? 0 : 0.3} />
       </group>
 
       {/* Disco solar — cor HDR acima de 1 pra estourar no Bloom */}
@@ -190,13 +228,14 @@ export function DesertEnvironment() {
         intensity={2.4}
         color="#ff9a5a"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={cinematic ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-45}
         shadow-camera-right={45}
         shadow-camera-top={45}
         shadow-camera-bottom={-45}
         shadow-camera-far={200}
         shadow-bias={-0.0004}
+        shadow-normalBias={0.025}
       />
       {/* Luar azulado, sem sombra (só o sol projeta) */}
       <directionalLight
@@ -229,11 +268,11 @@ export function DesertEnvironment() {
         onClick={(e) => {
           if (e.delta < 4) {
             useShrineStore.getState().clearSelection()
-            emitSandBurst(e.point)
+            if (!reducedMotion) emitSandBurst(e.point)
           }
         }}
       >
-        <meshStandardMaterial color="#c2884e" roughness={1} metalness={0} />
+        <meshStandardMaterial vertexColors roughness={0.96} metalness={0} bumpMap={sandTexture} bumpScale={0.045} />
       </mesh>
     </>
   )

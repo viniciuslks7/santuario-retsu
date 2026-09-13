@@ -1,4 +1,3 @@
-import * as THREE from 'three'
 
 /** Altura procedural das dunas em coordenadas de mundo (x, z).
  *  Mesma fórmula usada pra deslocar a malha do terreno: o plano é rodado
@@ -10,6 +9,7 @@ export function duneHeight(x: number, z: number): number {
     Math.sin(x * 0.13 - y * 0.09) * 0.9 +
     Math.cos(x * 0.31 + y * 0.27) * 0.25
   // Achata o centro pra abrigar o santuário
-  const flatten = THREE.MathUtils.smoothstep(Math.hypot(x, y), 13, 30)
+  const t = Math.max(0, Math.min(1, (Math.hypot(x, y) - 13) / 17))
+  const flatten = t * t * (3 - 2 * t)
   return h * flatten
 }

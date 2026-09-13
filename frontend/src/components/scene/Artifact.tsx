@@ -1,3 +1,4 @@
+import { useStoneTexture } from '../../lib/useStoneTexture'
 import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -8,6 +9,8 @@ import { ArtifactAura } from './ArtifactAura'
 import type { ArtifactSeed } from '../../lib/artifacts'
 import { playWeaponChime, playWeaponDraw } from '../../lib/weaponAudio'
 import { useShrineStore } from '../../store/useShrineStore'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
+import { BRONZE, DARK_STONE } from './WorldDetails'
 
 interface ArtifactProps {
   seed: ArtifactSeed
@@ -17,6 +20,8 @@ interface ArtifactProps {
 /** Pedestal de pedra + arma GLB flutuando. Hover intensifica o brilho
  *  emissivo e amplia a arma; clique dispara a inspeção (CameraRig + overlay). */
 export function Artifact({ seed, position }: ArtifactProps) {
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  const texture = useStoneTexture()
   const select = useShrineStore((s) => s.select)
   const setHovered = useShrineStore((s) => s.setHovered)
   const hovered = useShrineStore((s) => s.hoveredSibling === seed.id)
@@ -57,16 +62,18 @@ export function Artifact({ seed, position }: ArtifactProps) {
       }}
       onPointerOut={() => setHovered(null)}
     >
-      <mesh position-y={0.8} castShadow receiveShadow>
-        <cylinderGeometry args={[0.62, 0.78, 1.6, 10]} />
-        <meshStandardMaterial color="#6b573f" roughness={0.9} />
-      </mesh>
-      <mesh position-y={1.68}>
-        <cylinderGeometry args={[0.74, 0.74, 0.14, 10]} />
-        <meshStandardMaterial color="#55432f" roughness={0.9} />
-      </mesh>
+      <group rotation-y={Math.atan2(position[0], position[2])}>
+        <mesh position-y={.55} castShadow receiveShadow><cylinderGeometry args={[1.02, 1.15, .25, 8]} /><meshStandardMaterial color="#575e50" roughness={.95} bumpMap={texture} bumpScale={.07} /></mesh>
+        <mesh position-y={1.03} castShadow receiveShadow><cylinderGeometry args={[.59, .83, .83, 8]} /><meshStandardMaterial color={DARK_STONE} roughness={.85} bumpMap={texture} bumpScale={.085} /></mesh>
+        <mesh position-y={1.45}><cylinderGeometry args={[.74, .61, .15, 8]} /><meshStandardMaterial color={BRONZE} metalness={.65} roughness={.48} /></mesh>
+        <mesh position-y={1.63} castShadow><cylinderGeometry args={[.91, .75, .22, 8]} /><meshStandardMaterial color="#596153" roughness={.8} bumpMap={texture} bumpScale={.06} /></mesh>
+        <mesh position-y={1.76} rotation-x={-Math.PI / 2}><ringGeometry args={[.5, .72, 8]} /><meshStandardMaterial color={seed.color} emissive={seed.color} emissiveIntensity={selected || hovered ? 1.6 : .45} metalness={.3} roughness={.5} /></mesh>
+        {[-1, 1].map((x) => <mesh key={x} position={[x * .44, 1.02, .54]} rotation-z={x * -.12}><boxGeometry args={[.035, .65, .035]} /><meshStandardMaterial color={BRONZE} metalness={.6} roughness={.45} /></mesh>)}
+        <mesh position={[0, 1.04, .64]} rotation={[0, 0, Math.PI / 4]}><boxGeometry args={[.2, .2, .025]} /><meshStandardMaterial color={seed.color} emissive={seed.color} emissiveIntensity={.5} metalness={.5} roughness={.45} /></mesh>
+        {Array.from({ length: seed.order }, (_, i) => <mesh key={i} position={[(i - (seed.order - 1) / 2) * .062, .78, .72]}><boxGeometry args={[.023, .09, .018]} /><meshStandardMaterial color={BRONZE} roughness={.6} metalness={.4} /></mesh>)}
+      </group>
 
-      <Float speed={2.2} rotationIntensity={0.45} floatIntensity={0.7} floatingRange={[0, 0.35]}>
+      <Float speed={reducedMotion ? 0 : 1.4} rotationIntensity={reducedMotion ? 0 : 0.18} floatIntensity={reducedMotion ? 0 : 0.45} floatingRange={[0, 0.35]}>
         {/* pivô do giro na altura da arma, senão o pitch orbita em vez de inclinar */}
         <group position-y={3.2} ref={spinRef}>
           <primitive ref={weaponRef} object={model} />

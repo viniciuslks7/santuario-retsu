@@ -9,8 +9,12 @@ import { SandBursts } from './SandBursts'
 import { SandStorm } from './SandStorm'
 import { Shrine } from './Shrine'
 import { FOG_FAR, FOG_NEAR } from '../../lib/storm'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 
 export function Experience() {
+  const cinematic = useExperienceSettings((s) => s.quality === 'cinematic')
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+
   return (
     <>
       <fog attach="fog" args={['#c97f52', FOG_NEAR, FOG_FAR]} />
@@ -18,30 +22,35 @@ export function Experience() {
       <CameraRig />
       <DesertEnvironment />
       <Landmarks />
-      <DustParticles />
+      {!reducedMotion && <DustParticles key={cinematic ? 'cinematic' : 'balanced'} count={cinematic ? 260 : 90} />}
       {/* montada depois do DesertEnvironment: o useFrame dela roda depois e
           fecha o fog por cima da cor do ciclo dia/noite */}
       <SandStorm />
       <SandBursts />
       <Shrine />
-      <RaptorBirds />
+      {!reducedMotion && <RaptorBirds />}
 
       <OrbitControls
         makeDefault
-        enableDamping
+        enableDamping={!reducedMotion}
+        dampingFactor={0.07}
+        rotateSpeed={0.65}
+        zoomSpeed={0.8}
         target={[0, 2.5, 0]}
         minDistance={6}
-        maxDistance={55}
+        maxDistance={100}
         maxPolarAngle={Math.PI / 2 - 0.06}
         enablePan={false}
       />
 
-      {/* Cinematografia: brilho nas armas/sol, grão de filme e vinheta */}
-      <EffectComposer>
-        <Bloom mipmapBlur intensity={0.85} luminanceThreshold={1} luminanceSmoothing={0.25} />
-        <Noise opacity={0.04} />
-        <Vignette eskil={false} offset={0.22} darkness={0.78} />
-      </EffectComposer>
+      {/* O modo leve evita os passes de tela cheia em dispositivos móveis. */}
+      {cinematic && (
+        <EffectComposer multisampling={4}>
+          <Bloom mipmapBlur intensity={0.38} luminanceThreshold={1.2} luminanceSmoothing={0.3} />
+          <Noise opacity={reducedMotion ? 0 : 0.012} />
+          <Vignette eskil={false} offset={0.28} darkness={0.46} />
+        </EffectComposer>
+      )}
     </>
   )
 }

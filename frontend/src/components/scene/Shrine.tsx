@@ -1,3 +1,4 @@
+import { useStoneTexture } from '../../lib/useStoneTexture'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
@@ -7,6 +8,8 @@ import { useIdleAnimation, useWeaponModel } from './useWeaponModel'
 import { ArtifactAura } from './ArtifactAura'
 import { useInspectSpin } from './useInspectSpin'
 import { PagodaRoof, WindowWall } from './Landmarks'
+import { BRONZE, DARK_STONE, ShrineCourt, StoneInstances } from './WorldDetails'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 import { useShrineStore } from '../../store/useShrineStore'
 import {
   ARTIFACT_SEEDS,
@@ -20,13 +23,23 @@ import { playWeaponChime, playWeaponDraw } from '../../lib/weaponAudio'
  *  Clicável: abre o lore do clã (GET /api/clan). */
 function CentralMonolith() {
   const ref = useRef<THREE.Group>(null)
+  const texture = useStoneTexture()
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  const lattice = useMemo(() => {
+    const pieces = []
+    for (const side of [-1, 1]) {
+      for (const x of [-1.08, -.37, .37, 1.08]) pieces.push({ position: [x, 0, side * .94] as [number, number, number], scale: [.075, 4.5, .08] as [number, number, number] })
+      for (const y of [-2.1, -1.2, -.3, .6, 1.5, 2.1]) pieces.push({ position: [0, y, side * .94] as [number, number, number], scale: [2.3, .08, .08] as [number, number, number] })
+    }
+    return pieces
+  }, [])
   const runeRef = useRef<THREE.MeshBasicMaterial>(null)
   const openClan = useShrineStore((s) => s.openClan)
   const hovered = useShrineStore((s) => s.hoveredSibling === '__clan__')
   useCursor(hovered)
 
   useFrame(({ clock }, delta) => {
-    const t = clock.elapsedTime
+    const t = reducedMotion ? 0 : clock.elapsedTime
     if (ref.current) {
       ref.current.position.y = 3.6 + Math.sin(t * 0.6) * 0.25
       ref.current.rotation.y = t * 0.08
@@ -49,12 +62,17 @@ function CentralMonolith() {
       }}
       onPointerOut={() => useShrineStore.getState().setHovered(null)}
     >
-      <group ref={ref}>
+      <group ref={ref} position-y={3.6}>
+        <StoneInstances pieces={lattice} color={BRONZE} />
+        <mesh position-y={-2.47} castShadow><cylinderGeometry args={[2.05, 1.6, .35, 8]} /><meshStandardMaterial color={DARK_STONE} bumpMap={texture} bumpScale={.1} roughness={.8} /></mesh>
+        <mesh position-y={-2.77} rotation-x={Math.PI}><coneGeometry args={[1.1, .6, 8]} /><meshStandardMaterial color={BRONZE} metalness={.65} roughness={.45} /></mesh>
         {/* corpo principal — pedra escura, como a fortaleza-mãe no horizonte */}
         <mesh castShadow>
           <boxGeometry args={[2.2, 4.6, 1.8]} />
           <meshStandardMaterial
-            color="#241c15"
+            color="#424a40"
+            bumpMap={texture}
+            bumpScale={.08}
             roughness={0.8}
             emissive="#d4a017"
             emissiveIntensity={hovered ? 0.3 : 0.08}
@@ -232,18 +250,9 @@ function AwakenedBeacon() {
 export function Shrine() {
   return (
     <group>
-      {/* Plataforma de pedra do santuário — clique raso (sem arrasto) volta pra visão geral */}
-      <mesh
-        position-y={0.22}
-        receiveShadow
-        castShadow
-        onClick={(e) => {
-          if (e.delta < 4) useShrineStore.getState().clearSelection()
-        }}
-      >
-        <cylinderGeometry args={[12.5, 13.2, 0.45, 48]} />
-        <meshStandardMaterial color="#8a6d4d" roughness={0.95} />
-      </mesh>
+      <group onClick={(e) => { if (e.delta < 4) useShrineStore.getState().clearSelection() }}>
+        <ShrineCourt />
+      </group>
 
       <CentralMonolith />
 

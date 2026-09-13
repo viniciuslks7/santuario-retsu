@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 import { useShrineStore } from '../../store/useShrineStore'
 import { setWindStormLevel } from '../../lib/windAudio'
 import { FOG_FAR, FOG_NEAR, stormIntensity } from '../../lib/storm'
@@ -48,6 +49,7 @@ interface HazeSeed {
 }
 
 export function SandStorm() {
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
   const stormPhase = useShrineStore((s) => s.stormPhase)
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
@@ -118,6 +120,15 @@ export function SandStorm() {
   }, [seeds, hazeSeeds])
 
   useFrame(({ clock, scene, camera }, delta) => {
+    if (reducedMotion) {
+      stormIntensity.value = 0
+      setWindStormLevel(0)
+      if (meshRef.current) meshRef.current.visible = false
+      if (hazeRef.current) hazeRef.current.visible = false
+      if (scene.fog instanceof THREE.Fog) { scene.fog.near = FOG_NEAR; scene.fog.far = FOG_FAR }
+      if (stormPhase === 'raging') useShrineStore.getState().endStorm()
+      return
+    }
     const raging = forced || stormPhase === 'raging'
 
     // sobe rápido (a rajada chega), assenta devagar (a areia demora a baixar)

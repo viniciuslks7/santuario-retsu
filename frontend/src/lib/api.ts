@@ -1,4 +1,4 @@
-// Cliente da API de lore (proxy /api → localhost:3001 em dev, ver vite.config.ts)
+// Interface assíncrona para as crônicas incluídas no próprio site estático.
 
 export interface SiblingSummary {
   id: string
@@ -48,55 +48,40 @@ export class LoreError extends Error {
   }
 }
 
-const loreCache = new Map<string, SiblingLore>()
-
-export async function fetchLore(siblingId: string): Promise<SiblingLore> {
-  const cached = loreCache.get(siblingId)
-  if (cached) return cached
-
-  let res: Response
-  try {
-    res = await fetch(`/api/lore/${siblingId}`)
-  } catch {
-    // fetch só rejeita por falha de rede — backend fora do ar, DNS, CORS…
-    throw new LoreError('offline', `lore ${siblingId}: rede indisponível`)
-  }
-
-  if (res.status === 404) {
-    throw new LoreError('not-found', `lore ${siblingId}: sem registro`)
-  }
-  if (!res.ok) {
-    throw new LoreError('server', `lore ${siblingId}: HTTP ${res.status}`)
-  }
-
-  const data = (await res.json()) as SiblingLore
-  loreCache.set(siblingId, data)
-  return data
-}
-
-export async function fetchSiblingIndex(): Promise<SiblingSummary[]> {
-  const res = await fetch('/api/lore')
-  if (!res.ok) throw new Error(`índice de lore: HTTP ${res.status}`)
-  return (await res.json()) as SiblingSummary[]
-}
-
 export interface ClanLore {
   clan: string
   fortress: string
   prologue: string
 }
 
-let clanCache: ClanLore | null = null
+let catalogPromise: Promise<typeof import('../data/catalog')> | null = null
+
+function loadCatalog() {
+  catalogPromise ??= import('../data/catalog').catch(() => {
+    // Permite tentar novamente se o arquivo estático não terminou de carregar.
+    catalogPromise = null
+    throw new LoreError('offline', 'Não foi possível carregar o arquivo das crônicas.')
+  })
+  return catalogPromise
+}
+
+export async function fetchLore(siblingId: string): Promise<SiblingLore> {
+  const { siblings } = await loadCatalog()
+  const sibling = siblings.find(({ id }) => id === siblingId)
+  if (!sibling) throw new LoreError('not-found', `lore ${siblingId}: sem registro`)
+  return sibling
+}
+
+export async function fetchSiblingIndex(): Promise<SiblingSummary[]> {
+  const { siblings } = await loadCatalog()
+  return siblings
+    .filter(({ hidden }) => !hidden)
+    .map(({ id, order, name, title, epithet, color, weapon }) => ({
+      id, order, name, title, epithet, color,
+      weapon: { name: weapon.name, type: weapon.type },
+    }))
+}
 
 export async function fetchClan(): Promise<ClanLore> {
-  if (clanCache) return clanCache
-  let res: Response
-  try {
-    res = await fetch('/api/clan')
-  } catch {
-    throw new LoreError('offline', 'clã: rede indisponível')
-  }
-  if (!res.ok) throw new LoreError('server', `clã: HTTP ${res.status}`)
-  clanCache = (await res.json()) as ClanLore
-  return clanCache
+  return (await loadCatalog()).clanLore
 }

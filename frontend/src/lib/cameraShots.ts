@@ -12,8 +12,8 @@ export interface CameraShot {
 }
 
 export const OVERVIEW_SHOT: CameraShot = {
-  position: [0, 11, 28],
-  target: [0, 2.5, 0],
+  position: [24, 17, 32],
+  target: [0, 3, 0],
 }
 
 /** Close do monólito central (a Biblioteca do Fim em miniatura). */
@@ -81,4 +81,11 @@ export function getShot(siblingId: string): CameraShot {
     position: [Math.cos(angle) * radius, tweak.height ?? 3.7, Math.sin(angle) * radius],
     target: [x, tweak.targetY ?? 2.9, z],
   }
+}
+
+
+export const LANDMARK_SHOTS: Record<'gate' | 'archive' | 'oasis', CameraShot> = {
+  gate: { position: [7, 7, 33], target: [0, 4, 22] },
+  archive: { position: [-18, 11, -5], target: [-29, 4, -19] },
+  oasis: { position: [19, 9, 22], target: [30, 2, 9] },
 }

@@ -3,32 +3,35 @@ import gsap from 'gsap'
 import { useThree } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useShrineStore } from '../../store/useShrineStore'
-import { CLAN_SHOT, getShot, OVERVIEW_SHOT } from '../../lib/cameraShots'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
+import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
+import { CLAN_SHOT, LANDMARK_SHOTS, getShot, OVERVIEW_SHOT } from '../../lib/cameraShots'
 
-/** Conduz a câmera com GSAP entre a visão geral e o close de cada artefato.
- *  OrbitControls fica desabilitado durante o trânsito e na inspeção. */
 export function CameraRig() {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
-  const selectedSibling = useShrineStore((s) => s.selectedSibling)
+  const aspect = useThree((s) => s.size.width / s.size.height)
+  const selected = useShrineStore((s) => s.selectedSibling)
   const clanOpen = useShrineStore((s) => s.clanOpen)
-  const setAnimating = useShrineStore((s) => s.setAnimating)
-  const timelineRef = useRef<gsap.core.Timeline | null>(null)
+  const landmark = useShrineStore((s) => s.activeLandmark)
+  const revision = useShrineStore((s) => s.viewRevision)
+  const entered = useShrineStore((s) => s.hasEntered)
   const firstRunRef = useRef(true)
+  useEffect(() => () => useShrineStore.getState().setAnimating(false), [])
 
-  // Deep-link de inspeção: ?focus=lara abre direto no close
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('focus')
-    if (id) useShrineStore.getState().select(id)
+    const query = new URLSearchParams(window.location.search)
+    const id = query.get('focus')
+    if (id && [...ARTIFACT_SEEDS, CHOSEN_SEED].some((seed) => seed.id === id)) useShrineStore.getState().select(id)
+    const place = query.get('place')
+    if (place === 'gate' || place === 'archive' || place === 'oasis') useShrineStore.getState().visitLandmark(place)
   }, [])
 
-  // Handle de inspeção pra testes automatizados (só em dev)
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    // acesso direto ao store: os checks visuais simulam estados que exigiriam
-    // inspecionar as nove lâminas (ex.: stormPhase 'done' pra Sem-Nome desperta)
-    ;(window as unknown as Record<string, unknown>).__shrineStore = useShrineStore
-    ;(window as unknown as Record<string, unknown>).__shrineDebug = () => ({
+    const target = window as unknown as Record<string, unknown>
+    target.__shrineStore = useShrineStore
+    target.__shrineDebug = () => ({
       selected: useShrineStore.getState().selectedSibling,
       isAnimating: useShrineStore.getState().isAnimating,
       camera: camera.position.toArray().map((n) => Math.round(n * 10) / 10),
@@ -37,48 +40,30 @@ export function CameraRig() {
     })
   }, [camera, controls])
 
-  // Esc volta pra visão geral
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') useShrineStore.getState().clearSelection()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
   useEffect(() => {
     if (!controls) return
-    const inspecting = Boolean(selectedSibling) || clanOpen
-    if (firstRunRef.current && !inspecting) {
-      // Carga inicial já está na visão geral: nada a animar
-      firstRunRef.current = false
-      return
-    }
+    const inspecting = Boolean(selected) || clanOpen || Boolean(landmark)
+    const shot = landmark ? LANDMARK_SHOTS[landmark] : clanOpen ? CLAN_SHOT : selected ? getShot(selected) : OVERVIEW_SHOT
+    const reduced = useExperienceSettings.getState().reducedMotion
+    const initial = firstRunRef.current
     firstRunRef.current = false
-
-    const shot = clanOpen ? CLAN_SHOT : selectedSibling ? getShot(selectedSibling) : OVERVIEW_SHOT
-    timelineRef.current?.kill()
     controls.enabled = false
-    setAnimating(true)
-
+    // Distância do close cresce quando o FOV horizontal fica estreito.
+    const framing = inspecting ? Math.max(1.35, 1.12 / aspect) : Math.max(1.13, 0.73 / aspect)
+    const [tx, ty, tz] = shot.target
+    const position = { x: tx + (shot.position[0] - tx) * framing, y: ty + (shot.position[1] - ty) * framing, z: tz + (shot.position[2] - tz) * framing }
+    useShrineStore.getState().setAnimating(true)
     const tl = gsap.timeline({
-      defaults: { duration: 1.7, ease: 'power3.inOut' },
+      defaults: { duration: initial || reduced ? 0 : 1.7, ease: 'power3.inOut' },
       onUpdate: () => controls.update(),
       onComplete: () => {
-        setAnimating(false)
-        if (!inspecting) controls.enabled = true
+        controls.enabled = !selected && !clanOpen
+        useShrineStore.getState().setAnimating(false)
       },
     })
-    const [px, py, pz] = shot.position
-    const [tx, ty, tz] = shot.target
-    tl.to(camera.position, { x: px, y: py, z: pz }, 0)
+    tl.to(camera.position, position, 0)
     tl.to(controls.target, { x: tx, y: ty, z: tz }, 0)
-    timelineRef.current = tl
-
-    return () => {
-      tl.kill()
-    }
-  }, [selectedSibling, clanOpen, controls, camera, setAnimating])
-
+    return () => { tl.kill() }
+  }, [selected, clanOpen, landmark, revision, entered, aspect, controls, camera])
   return null
 }

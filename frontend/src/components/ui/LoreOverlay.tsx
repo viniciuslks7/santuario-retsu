@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useGLTF } from '@react-three/drei'
+import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { fetchLore, LoreError } from '../../lib/api'
 import type { LoreErrorKind, SiblingLore, SiblingStats } from '../../lib/api'
+import { usePanelFocus } from '../../lib/usePanelFocus'
 import { useShrineStore } from '../../store/useShrineStore'
-import { countTriangles, weaponToStl } from '../../lib/exportStl'
 
 const ERROR_COPY: Record<LoreErrorKind, { title: string; hint: string }> = {
   'not-found': {
@@ -12,7 +11,7 @@ const ERROR_COPY: Record<LoreErrorKind, { title: string; hint: string }> = {
   },
   offline: {
     title: 'A Biblioteca do Fim está em silêncio.',
-    hint: 'A API de lore não respondeu — confirme que o backend está de pé (porta 3001).',
+    hint: 'Não conseguimos recuperar esta história. Verifique sua conexão e tente novamente.',
   },
   server: {
     title: 'Os Arquivistas tropeçaram ao recuperar este pergaminho.',
@@ -30,67 +29,12 @@ const STAT_LABELS: Record<keyof SiblingStats, string> = {
 
 /** Exporta a malha real da arma (GLB → STL binário). A geometria do arquivo
  *  é exatamente a que flutua no pedestal — sem mock. */
-function ExportStlButton({ lore }: { lore: SiblingLore }) {
-  const { scene } = useGLTF(`/models/${lore.id}.glb`)
-  const tris = useMemo(() => countTriangles(scene), [scene])
-  const [phase, setPhase] = useState<'idle' | 'slicing' | 'done'>('idle')
-  const [progress, setProgress] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+const ExportStlButton = lazy(() => import('./ExportStlButton'))
 
-  // Estado zera por remount (key={lore.id} no uso); aqui só o cleanup do timer
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
-
-  const start = () => {
-    setPhase('slicing')
-    setProgress(0)
-    timerRef.current = setInterval(() => {
-      setProgress((p) => {
-        const next = p + 4 + Math.random() * 9
-        if (next < 100) return next
-        if (timerRef.current) clearInterval(timerRef.current)
-        const blob = weaponToStl(scene)
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `retsu-${lore.id}.stl`
-        a.click()
-        URL.revokeObjectURL(url)
-        setPhase('done')
-        return 100
-      })
-    }, 110)
-  }
-
-  if (phase === 'slicing') {
-    return (
-      <div className="flex-1">
-        <div className="mb-1 flex justify-between text-[10px] tracking-[0.25em] text-stone-400 uppercase">
-          <span>Fatiando malha…</span>
-          <span>{Math.floor(progress)}%</span>
-        </div>
-        <div className="h-1.5 w-full bg-white/10">
-          <div
-            className="h-full bg-(--accent) transition-[width] duration-100"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={start}
-      title={`${tris.toLocaleString('pt-BR')} triângulos`}
-      className="flex-1 cursor-pointer border border-(--accent) bg-(--accent)/15 px-4 py-2.5 text-xs font-semibold tracking-[0.25em] text-stone-100 uppercase transition hover:bg-(--accent)/35"
-    >
-      {phase === 'done' ? 'STL exportado ✓' : 'Exportar STL'}
-    </button>
-  )
+class ExportBoundary extends Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() { return this.state.failed ? <p role="status" className="text-xs text-stone-400">Não foi possível carregar esta malha para exportação.</p> : this.props.children }
 }
 
 function StatBar({ label, value, accent }: { label: string; value: number; accent: string }) {
@@ -111,8 +55,8 @@ function StatBar({ label, value, accent }: { label: string; value: number; accen
 }
 
 /** Painel de lore: desliza da direita quando a câmera chega no close.
- *  Conteúdo 100% vindo de GET /api/lore/:siblingId. */
-export function LoreOverlay() {
+ *  Conteúdo recuperado pela API de histórias. */
+export function LoreOverlay({ onJournal }: { onJournal: () => void }) {
   const selected = useShrineStore((s) => s.selectedSibling)
   const isAnimating = useShrineStore((s) => s.isAnimating)
   const clearSelection = useShrineStore((s) => s.clearSelection)
@@ -121,6 +65,9 @@ export function LoreOverlay() {
   const awakened = useShrineStore((s) => s.stormPhase === 'done')
   const [lore, setLore] = useState<SiblingLore | null>(null)
   const [errorKind, setErrorKind] = useState<LoreErrorKind | null>(null)
+  const [retry, setRetry] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { contentRef.current?.scrollTo(0, 0) }, [lore?.id])
 
   useEffect(() => {
     if (!selected) return
@@ -139,20 +86,24 @@ export function LoreOverlay() {
     return () => {
       alive = false
     }
-  }, [selected])
+  }, [selected, retry])
 
   const open = Boolean(selected) && !isAnimating
+  const panelRef = usePanelFocus(open && Boolean(lore), selected)
   const accent = lore?.color ?? '#d4a017'
   const errorCopy = errorKind ? ERROR_COPY[errorKind] : null
 
   return (
-    <aside
+    <aside ref={panelRef}
       aria-hidden={!open}
+      inert={!open}
+      aria-label="História da lâmina"
       style={{ '--accent': accent } as React.CSSProperties}
-      className={`fixed inset-y-0 right-0 z-20 flex w-full max-w-md flex-col border-l border-white/10 bg-gradient-to-l from-stone-950/95 via-stone-950/85 to-stone-950/60 backdrop-blur-md transition-all duration-700 ${
+      className={`lore-panel fixed inset-y-0 right-0 z-20 flex w-full max-w-md flex-col border-l border-white/10 bg-gradient-to-l from-stone-950/95 via-stone-950/85 to-stone-950/60 backdrop-blur-md transition-all duration-700 ${
         open ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-16 opacity-0'
       }`}
     >
+      <button className="panel-close" aria-label="Fechar história da lâmina" onClick={clearSelection}>×</button>
       {!lore && !errorCopy && (
         <p className="m-auto animate-pulse text-xs tracking-[0.4em] text-stone-400 uppercase">
           Consultando a Biblioteca do Fim…
@@ -163,6 +114,7 @@ export function LoreOverlay() {
         <div className="m-auto px-10 text-center">
           <p className="font-display text-lg text-stone-100">{errorCopy.title}</p>
           <p className="mt-3 text-sm leading-relaxed text-stone-400">{errorCopy.hint}</p>
+          <button className="mt-5 border border-white/20 px-4 py-2 text-sm text-stone-100" onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
           <button
             onClick={clearSelection}
             className="mt-6 cursor-pointer border border-white/20 px-4 py-2 text-xs tracking-[0.25em] uppercase hover:bg-white/10"
@@ -173,7 +125,7 @@ export function LoreOverlay() {
       )}
 
       {lore && (
-        <div className="relative flex-1 overflow-y-auto px-8 py-10 text-stone-200">
+        <div ref={contentRef} className="relative flex-1 overflow-y-auto px-8 py-10 text-stone-200">
           {/* numeral de fundo, estilo marca d'água de capítulo */}
           <span className="font-display pointer-events-none absolute -top-6 right-2 text-[11rem] leading-none text-white/5 select-none">
             {lore.order}
@@ -188,7 +140,7 @@ export function LoreOverlay() {
           <p className="text-[11px] tracking-[0.45em] uppercase" style={{ color: accent }}>
             {lore.epithet}
           </p>
-          <h2 className="font-display mt-1 text-4xl text-stone-50">{lore.name}</h2>
+          <h2 tabIndex={-1} className="font-display mt-1 text-4xl text-stone-50">{lore.name}</h2>
           <p className="mt-1 text-sm text-stone-400">
             {lore.title} · {lore.goldenJewels ? 'Joias Douradas ancoradas' : 'sem âncoras'}
           </p>
@@ -209,6 +161,7 @@ export function LoreOverlay() {
             <p className="mt-3 text-xs tracking-wide text-stone-500">{lore.discipline}</p>
           </section>
 
+          <button className="lore-journal-link" onClick={onJournal}>Ler as crônicas deste mundo ↗</button>
           <section className="mt-6 space-y-3 text-sm leading-relaxed text-stone-300">
             {lore.lore.map((paragraph) => (
               <p key={paragraph.slice(0, 24)}>{paragraph}</p>
@@ -258,7 +211,7 @@ export function LoreOverlay() {
           {/* hanko do clã */}
           <div className="mt-10 flex items-end justify-between">
             <div className="flex w-full gap-3">
-              <ExportStlButton key={lore.id} lore={lore} />
+              <ExportBoundary key={lore.id}><Suspense fallback={<span className="text-xs text-stone-400">Preparando exportação…</span>}><ExportStlButton lore={lore} /></Suspense></ExportBoundary>
               <button
                 onClick={clearSelection}
                 className="cursor-pointer border border-white/20 px-4 py-2.5 text-xs tracking-[0.25em] text-stone-300 uppercase transition hover:bg-white/10"
@@ -271,7 +224,7 @@ export function LoreOverlay() {
             </span>
           </div>
 
-          <p className="mt-3 text-[10px] leading-relaxed text-stone-600">
+          <p className="mt-3 text-[10px] leading-relaxed text-stone-400">
             STL binário da malha real do artefato, escalado para ~100&nbsp;mm de altura — pronto
             para fatiar.
           </p>

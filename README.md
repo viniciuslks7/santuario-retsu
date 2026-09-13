@@ -1,63 +1,61 @@
-# O Santuário do Deserto do Clã Retsu
+# Clã Retsu — O Santuário do Deserto
 
-Diorama 3D interativo: um santuário no deserto com 9 artefatos dos irmãos samurai do Clã Retsu (e um décimo, escondido). Câmera cinematográfica (GSAP), lore servida por API, ambiente com a Biblioteca do Fim ao horizonte e ruínas, e exportação STL da malha real de cada arma.
+Uma expedição 3D sobre memória, juramentos e o que resta depois do fim.
+Explore nove lâminas, atravesse o portal, visite um arquivo em ruínas e encontre um oásis.
+Quando o juramento está completo, o deserto revela uma décima história.
 
-## Interações
+## Explorar
 
-- **Clique num artefato** → câmera voa pro close + painel de lore (direita).
-- **Clique na fortaleza central (monólito)** → lore do clã + contador de descoberta (esquerda).
-- **Exportar STL** → baixa a malha real da arma (STL binário, ~100 mm), pronta pra fatiar.
-- **Clique na areia / fora / `Esc`** → volta pra visão geral.
-- **Deep-link** `?focus=<id>` abre direto num artefato.
+- Arraste para orbitar; use a roda do mouse ou dois dedos para aproximar.
+- Escolha uma arma no cenário ou no catálogo para inspecionar e conhecer seu herdeiro.
+- Na inspeção, arraste a arma para girá-la; `Esc` retorna ao santuário.
+- Use **Lugares do mundo** para viajar ao portal, ao arquivo e ao oásis.
+- Abra **As crônicas** para ler quatro capítulos, consultar o léxico e acompanhar a expedição.
+- O progresso é salvo localmente no navegador. Nenhuma conta é necessária.
+- Configure hora dourada, noite, dia, ciclo contínuo, qualidade e movimento reduzido.
+- O som começa desligado. Cada herdeiro tem um tema musical procedural.
+- Exporte a malha da arma como STL binário. A impressão pode exigir suportes e verificação no fatiador.
 
-## Stack
+## Desenvolvimento
 
-| Camada | Tecnologia |
-| --- | --- |
-| Frontend | Vite + React (TypeScript) |
-| 3D | React Three Fiber + Drei + react-postprocessing |
-| Animação | GSAP |
-| Estado | Zustand |
-| UI 2D | TailwindCSS v4 |
-| Backend | Node.js + Express (`/api/lore/:siblingId`) |
+Requer Node.js 24 e npm.
 
-## Rodando em dev
-
-```bash
-# Terminal 1 — API (porta 3001)
-cd backend && npm run dev
-
-# Terminal 2 — Frontend (porta 5173, com proxy /api → 3001)
-cd frontend && npm run dev
+```sh
+cd frontend
+npm ci
+npm run dev
 ```
 
-## Ferramentas
+As histórias são arquivos estáticos carregados sob demanda. Não é necessário iniciar
+um servidor de API. A pasta `backend` preserva o catálogo canônico original.
+A versão pública usa somente `frontend/dist`.
 
-```bash
-# Regenera os GLB procedurais das armas (frontend/public/models/)
-# Cada arma tem 9–40 peças; a malha gerada aqui é a mesma exportada como STL.
-cd frontend && node tools/build-models.mjs
-
-# Screenshot headless + estado da cena (precisa do dev server de pé)
-cd frontend && node scripts/shot.mjs "http://localhost:5173/?focus=lara" out.png 6000
+```sh
+npm run build
+npm run preview
+npm run lint
 ```
 
-Deep-link: `?focus=<id>` abre direto no close de um artefato (ids: haruki, setsuna,
-lara, iwao, tsumugi, raizo, mizuki, ranmaru, kyoya — e o segredo, chosen).
+Para uma publicação em subdiretório, defina `VITE_BASE_PATH=/santuario-retsu/` durante o build.
+Todos os modelos usam esse prefixo. Links diretos aceitam `?focus=lara` ou `?place=oasis`.
 
-## Estrutura
+## Publicação gratuita
 
-```
-santuario-retsu/
-├── backend/
-│   └── src/
-│       ├── server.js        # Express + endpoints da API
-│       └── data/            # Lore dos 9 irmãos (JSON)
-└── frontend/
-    └── src/
-        ├── components/
-        │   ├── scene/       # DesertEnvironment, Shrine, artefatos (R3F)
-        │   └── ui/          # Overlay 2D (lore, HUD, export)
-        ├── store/           # Zustand (currentView, selectedSibling)
-        └── lib/             # GSAP helpers, fetch da API
-```
+O workflow `.github/workflows/pages.yml` instala, valida, compila e publica pelo GitHub Pages
+a cada push em `main`. Em Settings → Pages, a origem deve ser **GitHub Actions**.
+Não requer chave de API, banco de dados, servidor pago ou domínio próprio.
+
+## Verificação
+
+`npm run check:experience` executa a revisão de navegador com Chrome no Windows.
+As capturas locais ficam em `frontend/artifacts/review`, fora do Git.
+O teste de publicação também verifica o build sob o prefixo `/santuario-retsu/`, com a API desligada.
+
+## Tecnologia e direção artística
+
+React, TypeScript, Vite, Three.js, React Three Fiber, Drei, GSAP e Zustand.
+Arquitetura, dunas, materiais, água, partículas, armas e áudio são procedurais.
+Pisos, escombros e elementos repetidos usam instâncias para reduzir chamadas de desenho.
+O modo leve reduz efeitos e resolução; as crônicas continuam disponíveis quando WebGL falha.
+
+As fontes consultadas e as decisões de projeto estão em [docs/research.md](docs/research.md).

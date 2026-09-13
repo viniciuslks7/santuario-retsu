@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
+import { assetUrl } from '../../lib/assetUrl'
 
 // Hooks compartilhados por Artifact e ChosenBlade. Vivem num .ts próprio
 // pra Artifact.tsx só exportar componentes (exigência do fast refresh).
@@ -11,7 +13,7 @@ import { ARTIFACT_SEEDS, CHOSEN_SEED } from '../../lib/artifacts'
  *  a cor emissiva do irmão; aqui só animamos a intensidade. Devolve também os
  *  AnimationClips embutidos no GLB (clip "idle") pra tocar com useAnimations. */
 export function useWeaponModel(id: string) {
-  const { scene, animations } = useGLTF(`/models/${id}.glb`)
+  const { scene, animations } = useGLTF(assetUrl(`models/${id}.glb`))
   const built = useMemo(() => {
     const model = scene.clone(true)
     const glowMaterials: THREE.MeshStandardMaterial[] = []
@@ -30,14 +32,16 @@ export function useWeaponModel(id: string) {
 /** Toca o clip idle embutido no GLB sobre o modelo clonado (mixer por instância). */
 export function useIdleAnimation(model: THREE.Object3D, animations: THREE.AnimationClip[]) {
   const { actions } = useAnimations(animations, model)
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
   useEffect(() => {
     const idle = actions.idle
     if (!idle) return
+    if (reducedMotion) { idle.stop(); return }
     idle.reset().setLoop(THREE.LoopRepeat, Infinity).play()
     return () => void idle.stop()
-  }, [actions])
+  }, [actions, reducedMotion])
 }
 
 for (const seed of [...ARTIFACT_SEEDS, CHOSEN_SEED]) {
-  useGLTF.preload(`/models/${seed.id}.glb`)
+  useGLTF.preload(assetUrl(`models/${seed.id}.glb`))
 }
