@@ -73,7 +73,7 @@ export function Artifact({ seed, position }: ArtifactProps) {
         {Array.from({ length: seed.order }, (_, i) => <mesh key={i} position={[(i - (seed.order - 1) / 2) * .062, .78, .72]}><boxGeometry args={[.023, .09, .018]} /><meshStandardMaterial color={BRONZE} roughness={.6} metalness={.4} /></mesh>)}
       </group>
 
-      <Float speed={reducedMotion ? 0 : 1.4} rotationIntensity={reducedMotion ? 0 : 0.18} floatIntensity={reducedMotion ? 0 : 0.45} floatingRange={[0, 0.35]}>
+      <Float speed={reducedMotion ? 0 : 1.8} rotationIntensity={reducedMotion ? 0 : 0.24} floatIntensity={reducedMotion ? 0 : 1} floatingRange={[-0.15, 0.4]}>
         {/* pivô do giro na altura da arma, senão o pitch orbita em vez de inclinar */}
         <group position-y={3.2} ref={spinRef}>
           <primitive ref={weaponRef} object={model} />

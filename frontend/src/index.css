@@ -98,7 +98,7 @@ button:disabled { cursor: wait; opacity: .6; }
 }
 @media (max-height: 680px) and (min-width: 761px) { .intro { top: 120px; } .intro h1 { font-size: 44px; margin: 12px 0; } .intro-description { margin-bottom: 15px; } .intro-caption { display: none; } }
 @media (max-height: 580px) and (max-width: 760px) { .intro { top: 88px; } .intro h1 { font-size: 30px; margin: 8px 0; } .intro-description { display: none; } .lore-panel, .clan-panel { top: 125px !important; left: 45% !important; bottom: 137px !important; } .experience-shell[data-inspecting=true] .scene-viewport { inset: 76px 55% 137px 0; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+/* The setting starts from the OS preference and allows an explicit override. */
 
 .lore-panel .tracking-\[0\.45em\], .clan-panel .tracking-\[0\.45em\] { padding-right: 24px; overflow-wrap: anywhere; }
 /* Expedition and story atlas */
@@ -206,7 +206,69 @@ button:disabled { cursor: wait; opacity: .6; }
 @media (max-height: 650px) { .journal { height: calc(100dvh - 24px); } .journal-sidebar .clan-seal { display: none; } .journal-progress { margin-top: 5px; } .journal-tabs { margin: 20px 0; } }
 
 .lore-journal-link { margin-top: 20px; font-size: 10px; color: #d1ba94; padding-bottom: 5px; border-bottom: 1px solid #bba37a66; }
-.experience-shell[data-reduced=true] * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+.experience-shell[data-reduced=true] *, .experience-shell[data-reduced=true] *::before, .experience-shell[data-reduced=true] *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 
 .scene-viewport { overflow: hidden; }
 .scene-viewport canvas { width: 100% !important; height: 100% !important; }
+
+.motion-button { padding: 0 12px; font-size: 10px; color: #e9cc9e; white-space: nowrap; }
+.reader-toggle { display: none; }
+.motion-button[aria-pressed=false] { border-color: #d8bc90; background: #70513466; }
+.motion-button[aria-pressed=true] svg { color: #b8ccaa; }
+.scene-viewport canvas { touch-action: none; }
+.options-panel { max-height: calc(100dvh - 105px); overflow-y: auto; overscroll-behavior: contain; }
+.lore-panel .overflow-y-auto, .clan-panel .overflow-y-auto, .location-content, .journal-main { overscroll-behavior: contain; }
+@media (max-width: 1150px) { .motion-button span { display: none; } .motion-button { padding: 0; } }
+@media (max-width: 760px) {
+ .site-header { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); top: env(safe-area-inset-top); height: 68px; gap: 8px; }
+ .brand { font-size: 14px; gap: 6px; padding: 0; letter-spacing: .15em; }
+ .brand small { display: none; } .brand .clan-seal { width: 28px; height: 34px; font-size: 23px; }
+ .header-tools { gap: 4px; } .tool-button { min-width: 44px; height: 44px; } .help-button { display: none; }
+ .intro { top: calc(90px + env(safe-area-inset-top)); }
+ .explore-button, .intro-secondary, .back-button, .panel-close, .journal-close, .options-heading button { min-height: 44px; }
+ .panel-close, .options-heading button { min-width: 44px; }
+ .discovery-dock { left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); padding-top: 8px; }
+ .dock-tabs { gap: 12px; } .dock-tabs button { min-height: 44px; }
+ .artifact-list, .place-list { scroll-snap-type: x proximity; scroll-padding-inline: 2px; overscroll-behavior-x: contain; }
+ .artifact-card, .place-card { scroll-snap-align: start; }
+ .options-panel { top: 66px; width: min(330px, calc(100vw - 24px)); max-height: calc(100dvh - 88px - env(safe-area-inset-top)); padding: 18px; }
+ .options-panel .check-label { min-height: 44px; margin: 8px 0; }
+ .options-panel input { width: 20px; height: 20px; flex-shrink: 0; }
+ .back-button { top: calc(78px + env(safe-area-inset-top)); left: 12px; }
+ .reader-toggle { display: block; position: absolute; z-index: 26; right: 12px; top: calc(78px + env(safe-area-inset-top)); min-height: 44px; padding: 8px 11px; font-size: 10px; color: #e9cc9e; border: 1px solid #c3b19155; background: #152024e8; }
+ .experience-shell[data-inspecting=true] .scene-viewport { inset: calc(68px + env(safe-area-inset-top)) 0 60%; }
+ .lore-panel, .clan-panel { top: 40% !important; bottom: calc(180px + env(safe-area-inset-bottom)) !important; left: 12px !important; right: 12px !important; }
+ .lore-panel > .overflow-y-auto, .clan-panel > .overflow-y-auto, .location-content { padding: 40px 20px 22px; }
+ .lore-panel p, .clan-panel p, .location-paragraph { font-size: 13px; }
+ .lore-panel .overflow-y-auto, .clan-panel .overflow-y-auto { overflow-x: hidden; overflow-wrap: anywhere; }
+ .lore-panel button, .clan-panel button { white-space: normal; max-width: 100%; }
+ .expedition-card { top: calc(84px + env(safe-area-inset-top)); left: 12px; width: 215px; padding: 13px; }
+ .expedition-card h2 { font-size: 18px; } .expedition-card p:not(.eyebrow) { display: none; } .expedition-card button { min-height: 44px; }
+ .journal-main { min-height: 0; } .journal-close { z-index: 2; background: #e8dec9; padding: 0 8px; }
+ .journal-tabs button { min-height: 44px; }
+ .dock-bottom > span:first-child { font-size: 0; }
+ .dock-bottom > span:first-child::after { content: 'ARRASTE O CENÁRIO · DESLIZE O CATÁLOGO'; font-size: 7px; }
+ .experience-shell[data-inspecting=true][data-reading-expanded=true] .lore-panel, .experience-shell[data-inspecting=true][data-reading-expanded=true] .clan-panel { top: calc(132px + env(safe-area-inset-top)) !important; bottom: max(12px, env(safe-area-inset-bottom)) !important; }
+ .experience-shell[data-inspecting=true][data-reading-expanded=true] .discovery-dock { visibility: hidden; }
+}
+@media (max-height: 500px) and (max-width: 1000px) {
+ .site-header { height: 56px; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); }
+ .header-nav, .brand small, .scene-caption, .help-button { display: none; }
+ .header-tools { margin-left: auto; } .tool-button { min-width: 44px; height: 44px; }
+ .intro { top: 72px; left: 24px; } .intro h1 { font-size: 30px; margin: 8px 0; }
+ .intro-description, .intro-caption, .intro-secondary, .expedition-card { display: none; }
+ .discovery-dock { left: 16px; right: 16px; padding: 4px 0 max(6px, env(safe-area-inset-bottom)); }
+ .dock-heading { margin-bottom: 3px; } .dock-tabs button { min-height: 34px; } .dock-bottom { display: none; }
+ .artifact-card, .place-card { height: 56px; } .artifact-list { grid-template-columns: repeat(9, 112px); }
+ .back-button { top: 64px; left: 16px; }
+ .reader-toggle { display: block; position: absolute; z-index: 26; top: 64px; left: 190px; right: auto; min-height: 44px; padding: 8px 11px; font-size: 10px; color: #e9cc9e; border: 1px solid #c3b19155; background: #152024e8; }
+ .experience-shell[data-inspecting=true] .scene-viewport { inset: 56px 48% 112px 0; }
+ .lore-panel, .clan-panel { top: 62px !important; bottom: calc(112px + env(safe-area-inset-bottom)) !important; left: 52% !important; right: 16px !important; width: auto !important; }
+ .options-panel { top: 52px; max-height: calc(100dvh - 68px); }
+ .journal { height: calc(100dvh - 16px); } .journal-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); }
+ .journal-sidebar { padding: 20px 14px; } .journal-sidebar h2 { font-size: 20px; } .journal-tabs { display: grid; margin: 10px 0; gap: 0; }
+ .journal-intro, .journal-progress, .save-note, .journal-sidebar > .eyebrow { display: none; }
+ .journal-main { padding: 55px 24px 20px; }
+ .experience-shell[data-inspecting=true][data-reading-expanded=true] .lore-panel, .experience-shell[data-inspecting=true][data-reading-expanded=true] .clan-panel { top: 115px !important; bottom: max(12px, env(safe-area-inset-bottom)) !important; left: max(16px, env(safe-area-inset-left)) !important; }
+ .experience-shell[data-inspecting=true][data-reading-expanded=true] .discovery-dock { visibility: hidden; }
+}

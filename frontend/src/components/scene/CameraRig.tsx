@@ -11,6 +11,7 @@ export function CameraRig() {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const aspect = useThree((s) => s.size.width / s.size.height)
+  const height = useThree((s) => s.size.height)
   const selected = useShrineStore((s) => s.selectedSibling)
   const clanOpen = useShrineStore((s) => s.clanOpen)
   const landmark = useShrineStore((s) => s.activeLandmark)
@@ -49,7 +50,8 @@ export function CameraRig() {
     firstRunRef.current = false
     controls.enabled = false
     // Distância do close cresce quando o FOV horizontal fica estreito.
-    const framing = inspecting ? Math.max(1.35, 1.12 / aspect) : Math.max(1.13, 0.73 / aspect)
+    const closeDistance = height < 200 ? 2.1 : height < 330 ? 1.7 : 1.35
+    const framing = inspecting ? Math.max(closeDistance, 1.12 / aspect) : Math.max(1.13, 0.73 / aspect)
     const [tx, ty, tz] = shot.target
     const position = { x: tx + (shot.position[0] - tx) * framing, y: ty + (shot.position[1] - ty) * framing, z: tz + (shot.position[2] - tz) * framing }
     useShrineStore.getState().setAnimating(true)
@@ -64,6 +66,6 @@ export function CameraRig() {
     tl.to(camera.position, position, 0)
     tl.to(controls.target, { x: tx, y: ty, z: tz }, 0)
     return () => { tl.kill() }
-  }, [selected, clanOpen, landmark, revision, entered, aspect, controls, camera])
+  }, [selected, clanOpen, landmark, revision, entered, aspect, height, controls, camera])
   return null
 }

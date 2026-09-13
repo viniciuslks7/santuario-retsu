@@ -41,12 +41,20 @@ export function StoneInstances({ pieces, color = STONE, kind = 'box' }: { pieces
 
 /** Stone tōrō: broad plinth, narrow stem, luminous chamber and flared cap. */
 export function StoneLantern({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  const flame = useRef<THREE.MeshStandardMaterial>(null)
+  const time = useRef(position[0] + position[2])
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  useFrame((_, delta) => {
+    if (!flame.current || reducedMotion) return
+    time.current += Math.min(delta, .05)
+    flame.current.emissiveIntensity = 1.8 + Math.sin(time.current * 3) * .25 + Math.sin(time.current * 7) * .1
+  })
   return (
     <group position={position} scale={scale}>
       <mesh position-y={.14} castShadow receiveShadow><boxGeometry args={[.9, .28, .9]} /><meshStandardMaterial color={STONE} roughness={.93} /></mesh>
       <mesh position-y={.67} castShadow><cylinderGeometry args={[.18, .27, .85, 8]} /><meshStandardMaterial color={DARK_STONE} roughness={.9} /></mesh>
       <mesh position-y={1.16} castShadow><cylinderGeometry args={[.48, .29, .23, 4]} /><meshStandardMaterial color={STONE} roughness={.9} /></mesh>
-      <mesh position-y={1.48}><boxGeometry args={[.48, .5, .48]} /><meshStandardMaterial color="#ffcb75" emissive="#ffae42" emissiveIntensity={1.8} /></mesh>
+      <mesh position-y={1.48}><boxGeometry args={[.48, .5, .48]} /><meshStandardMaterial ref={flame} color="#ffcb75" emissive="#ffae42" emissiveIntensity={1.8} /></mesh>
       {[-1, 1].flatMap((x) => [-1, 1].map((z) => <mesh key={`${x}-${z}`} position={[x * .25, 1.5, z * .25]}><boxGeometry args={[.065, .65, .065]} /><meshStandardMaterial color={DARK_STONE} /></mesh>))}
       <mesh position-y={1.88} rotation-y={Math.PI / 4} castShadow><cylinderGeometry args={[.15, .62, .32, 4]} /><meshStandardMaterial color={DARK_STONE} roughness={.9} /></mesh>
       <mesh position-y={2.15}><sphereGeometry args={[.13, 8, 6]} /><meshStandardMaterial color={BRONZE} metalness={.65} roughness={.45} /></mesh>

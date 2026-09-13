@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Html, useCursor } from '@react-three/drei'
 import { Artifact } from './Artifact'
+import { WindBanner } from './WindBanner'
 import { useIdleAnimation, useWeaponModel } from './useWeaponModel'
 import { ArtifactAura } from './ArtifactAura'
 import { useInspectSpin } from './useInspectSpin'
@@ -252,6 +253,7 @@ export function Shrine() {
     <group>
       <group onClick={(e) => { if (e.delta < 4) useShrineStore.getState().clearSelection() }}>
         <ShrineCourt />
+        {[-1, 1].flatMap((x) => [-1, 1].map((z) => <WindBanner key={`${x}-${z}`} position={[x * 10.5, .45, z * 8]} phase={x + z * .6} />))}
       </group>
 
       <CentralMonolith />

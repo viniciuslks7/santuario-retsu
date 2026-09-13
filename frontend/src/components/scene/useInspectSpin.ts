@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useExperienceSettings } from '../../store/useExperienceSettings'
 
 /** Durante a inspeção, arrastar em qualquer lugar do canvas gira a arma
  *  (turntable no Y + inclinação limitada no X). O OrbitControls está
@@ -13,12 +14,15 @@ export function useInspectSpin(active: boolean) {
   const dragging = useRef(false)
   const last = useRef<[number, number]>([0, 0])
   const gl = useThree((s) => s.gl)
+  const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  const manuallyRotated = useRef(false)
 
   useEffect(() => {
     if (!active) return
     const el = gl.domElement
     const down = (e: PointerEvent) => {
       dragging.current = true
+      manuallyRotated.current = true
       last.current = [e.clientX, e.clientY]
     }
     const move = (e: PointerEvent) => {
@@ -44,8 +48,13 @@ export function useInspectSpin(active: boolean) {
 
   useFrame((_, delta) => {
     if (!active) {
-      target.current.yaw = 0
+      manuallyRotated.current = false
       target.current.pitch = 0
+    }
+    // Turntable motion stays on the same pivot as touch inspection. A drag
+    // hands control to the visitor until they leave this artifact.
+    if (!reducedMotion && !dragging.current && !manuallyRotated.current) {
+      target.current.yaw += Math.min(delta, .05) * (active ? .22 : .3)
     }
     const g = groupRef.current
     if (!g) return

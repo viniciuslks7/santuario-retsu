@@ -48,6 +48,9 @@ export function Hud({ onJournal }: { onJournal: () => void }) {
         <button className="nav-link" onClick={onJournal}>As crônicas <span aria-hidden="true">↗</span></button>
       </nav>
       <div className="header-tools">
+        <button className="tool-button motion-button" aria-pressed={!settings.reducedMotion} aria-label={settings.reducedMotion ? 'Ativar animações' : 'Pausar animações'} onClick={() => settings.setReducedMotion(!settings.reducedMotion)} title={settings.reducedMotion ? 'Ativar animações' : 'Pausar animações'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{settings.reducedMotion ? <path d="m7 4 14 8-14 8Z" /> : <path d="M6 4h4v16H6zm8 0h4v16h-4z" />}</svg><span>{settings.reducedMotion ? 'Animar mundo' : 'Mundo vivo'}</span>
+        </button>
         <button className="tool-button journal-toggle" aria-label="Abrir diário e crônicas" onClick={onJournal}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M3 4h7l2 2 2-2h7v15h-7l-2 2-2-2H3ZM12 6v15" /></svg></button>
         <button className="tool-button sound-button" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? 'Desativar som' : 'Ativar som'}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z" />{soundOn ? <path d="M15 8c3 2 3 6 0 8M18 5c5 4 5 10 0 14" /> : <path d="m16 9 6 6m0-6-6 6" />}</svg>
@@ -64,6 +67,8 @@ export function Hud({ onJournal }: { onJournal: () => void }) {
           <label htmlFor="quality">Qualidade visual</label>
           <select id="quality" value={settings.quality} onChange={(e) => settings.setQuality(e.target.value as typeof settings.quality)}><option value="cinematic">Cinematográfica</option><option value="balanced">Leve · menos efeitos</option></select>
           <label className="check-label"><input type="checkbox" checked={settings.reducedMotion} onChange={(e) => settings.setReducedMotion(e.target.checked)} />Reduzir movimento</label>
+          <label className="check-label"><input type="checkbox" checked={settings.autoTour} onChange={(e) => settings.setAutoTour(e.target.checked)} />Passeio automático da câmera</label>
+          <p>Arrastar assume o controle da câmera. Sua escolha de animações fica salva neste navegador.</p>
         </> : <><p>Arraste o cenário para olhar ao redor. Use a roda do mouse ou dois dedos para aproximar.</p><p>Escolha uma lâmina no cenário ou no catálogo abaixo. Durante a inspeção, arraste para girá-la.</p><p>Descubra as nove lâminas e observe o que o deserto revela.</p><p><kbd>Esc</kbd> Voltar ao santuário</p><button className="nav-link" onClick={() => { setPopover(null); useShrineStore.getState().openClan() }}>Conhecer a história do clã ↗</button></>}
       </section>}
     </header>

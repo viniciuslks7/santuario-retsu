@@ -10,10 +10,13 @@ import { SandStorm } from './SandStorm'
 import { Shrine } from './Shrine'
 import { FOG_FAR, FOG_NEAR } from '../../lib/storm'
 import { useExperienceSettings } from '../../store/useExperienceSettings'
+import { useShrineStore } from '../../store/useShrineStore'
 
 export function Experience() {
   const cinematic = useExperienceSettings((s) => s.quality === 'cinematic')
   const reducedMotion = useExperienceSettings((s) => s.reducedMotion)
+  const autoTour = useExperienceSettings((s) => s.autoTour)
+  const overview = useShrineStore((s) => s.currentView === 'overview' && !s.isAnimating)
 
   return (
     <>
@@ -32,6 +35,9 @@ export function Experience() {
 
       <OrbitControls
         makeDefault
+        autoRotate={autoTour && overview && !reducedMotion}
+        autoRotateSpeed={0.45}
+        onStart={() => useExperienceSettings.getState().setAutoTour(false)}
         enableDamping={!reducedMotion}
         dampingFactor={0.07}
         rotateSpeed={0.65}
